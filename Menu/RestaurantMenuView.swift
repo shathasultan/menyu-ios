@@ -14,7 +14,7 @@ struct RestaurantMenuView: View {
                 RestaurantHeader(restaurant: liveRestaurant)
 
                 ForEach(liveRestaurant.categories) { category in
-                    CategorySection(category: category)
+                    CategorySection(restaurant: liveRestaurant, category: category)
                         .padding(.top, 8)
                 }
 
@@ -96,6 +96,7 @@ private struct RestaurantHeader: View {
 
 private struct CategorySection: View {
     @Environment(AppStore.self) private var store
+    let restaurant: Restaurant
     let category: MenuCategory
 
     var body: some View {
@@ -131,7 +132,10 @@ private struct CategorySection: View {
             // Item rows
             VStack(spacing: 0) {
                 ForEach(Array(category.items.enumerated()), id: \.element.id) { index, item in
-                    MenuItemRow(item: item)
+                    NavigationLink(destination: ItemDetailView(restaurant: restaurant, item: item)) {
+                        MenuItemRow(item: item)
+                    }
+                    .buttonStyle(.plain)
                     if index < category.items.count - 1 {
                         Divider().padding(.leading, 78)
                     }

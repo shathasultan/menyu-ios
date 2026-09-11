@@ -7,7 +7,9 @@ import PostgREST
 final class AppStore {
     var restaurants: [Restaurant] = []
     var myRestaurants: [Restaurant] = []
-    var favoriteIDs: Set<UUID> = []
+    var favoriteIDs: Set<UUID> = [] {
+        didSet { persistFavorites() }
+    }
     var language: Language = .arabic
     var isLoading = false
     var errorMessage: String? = nil
@@ -15,11 +17,23 @@ final class AppStore {
 
     var isAuthenticated: Bool { currentUserID != nil }
 
+    private static let favoritesDefaultsKey = "menu.favoriteItemIDs.v1"
+
     init() {
+        favoriteIDs = Self.loadPersistedFavorites()
         Task {
             await checkSession()
             await loadRestaurants()
         }
+    }
+
+    private static func loadPersistedFavorites() -> Set<UUID> {
+        let raw = UserDefaults.standard.stringArray(forKey: favoritesDefaultsKey) ?? []
+        return Set(raw.compactMap(UUID.init))
+    }
+
+    private func persistFavorites() {
+        UserDefaults.standard.set(favoriteIDs.map(\.uuidString), forKey: Self.favoritesDefaultsKey)
     }
 
     // MARK: - Load Public Restaurants
