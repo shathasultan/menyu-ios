@@ -78,6 +78,12 @@ struct AccountView: View {
             .navigationTitle(isArabic ? "حسابي" : "Account")
             .navigationBarTitleDisplayMode(.large)
         }
+        .onAppear {
+            if store.skipVendorGateOnce {
+                confirmedVendorIntent = true
+                store.skipVendorGateOnce = false
+            }
+        }
     }
 }
 

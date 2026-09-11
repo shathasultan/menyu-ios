@@ -17,6 +17,10 @@ final class AppStore {
     var currentUserID: UUID? = nil
     var currentUserEmail: String? = nil
     var pendingRestaurants: [Restaurant] = []
+    /// Set once when RoleGateView's "I'm a vendor" choice routes straight into
+    /// sign-in — lets AccountView skip its own VendorIntentGateView so the
+    /// choice isn't asked twice back to back. Consumed (reset to false) on read.
+    var skipVendorGateOnce = false
 
     var isAuthenticated: Bool { currentUserID != nil }
 
