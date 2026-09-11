@@ -163,12 +163,21 @@ struct RestaurantCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             ZStack {
-                Color.mAccentSoft
-                Image(systemName: restaurant.type.icon)
-                    .font(.system(size: 34))
-                    .foregroundStyle(Color.mAccentStrong)
+                if let urlString = restaurant.imageURL, let url = URL(string: urlString) {
+                    AsyncImage(url: url) { image in
+                        image.resizable().aspectRatio(contentMode: .fill)
+                    } placeholder: {
+                        Color.mAccentSoft
+                    }
+                } else {
+                    Color.mAccentSoft
+                    Image(systemName: restaurant.type.icon)
+                        .font(.system(size: 34))
+                        .foregroundStyle(Color.mAccentStrong)
+                }
             }
             .frame(height: 88)
+            .clipped()
 
             VStack(alignment: .leading, spacing: 6) {
                 Text(restaurant.displayName(store.language))

@@ -43,24 +43,31 @@ private struct RestaurantHeader: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Warm accent hero
+            // Hero: restaurant photo if present, otherwise the accent gradient
             ZStack {
-                LinearGradient(
-                    colors: [Color.mAccent, Color.mAccentDeep],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-
-                // Decorative circles for depth
-                Circle().fill(.white.opacity(0.10)).frame(width: 180).offset(x: 90, y: -15)
-                Circle().fill(.white.opacity(0.07)).frame(width: 110).offset(x: -70, y: 40)
-
-                VStack(spacing: 12) {
+                if let urlString = restaurant.imageURL, let url = URL(string: urlString) {
+                    AsyncImage(url: url) { image in
+                        image.resizable().aspectRatio(contentMode: .fill)
+                    } placeholder: {
+                        LinearGradient(colors: [Color.mAccent, Color.mAccentDeep], startPoint: .topLeading, endPoint: .bottomTrailing)
+                    }
+                    Color.black.opacity(0.22)
+                } else {
+                    LinearGradient(
+                        colors: [Color.mAccent, Color.mAccentDeep],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                    // Decorative circles for depth
+                    Circle().fill(.white.opacity(0.10)).frame(width: 180).offset(x: 90, y: -15)
+                    Circle().fill(.white.opacity(0.07)).frame(width: 110).offset(x: -70, y: 40)
                     Image(systemName: restaurant.type.icon)
                         .font(.system(size: 50))
                         .foregroundStyle(.white)
+                }
 
-                    // Type badge
+                VStack {
+                    Spacer()
                     HStack(spacing: 4) {
                         Image(systemName: restaurant.type.icon).font(.caption2)
                         Text(restaurant.type.label(store.language))
@@ -70,9 +77,11 @@ private struct RestaurantHeader: View {
                     .background(.white.opacity(0.18))
                     .foregroundStyle(.white)
                     .clipShape(Capsule())
+                    .padding(.bottom, restaurant.imageURL == nil ? 0 : 12)
                 }
             }
             .frame(height: 165)
+            .clipped()
 
             // Restaurant info card
             VStack(spacing: 6) {

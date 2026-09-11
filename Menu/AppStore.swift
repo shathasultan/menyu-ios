@@ -211,6 +211,34 @@ final class AppStore {
         }
     }
 
+    @discardableResult
+    func uploadRestaurantImage(_ restaurantID: UUID, imageData: Data) async -> String? {
+        do {
+            let path = "restaurant-\(restaurantID.uuidString).jpg"
+            try await supabase.storage.from("menu-images").upload(
+                path, data: imageData,
+                options: FileOptions(cacheControl: "3600", contentType: "image/jpeg", upsert: true)
+            )
+            let publicURL = try supabase.storage.from("menu-images").getPublicURL(path: path)
+
+            struct UpdateImage: Encodable {
+                let imageURL: String
+                enum CodingKeys: String, CodingKey { case imageURL = "image_url" }
+            }
+            try await supabase
+                .from("restaurants")
+                .update(UpdateImage(imageURL: publicURL.absoluteString))
+                .eq("id", value: restaurantID.uuidString)
+                .execute()
+            await loadMyRestaurants()
+            await loadRestaurants()
+            return publicURL.absoluteString
+        } catch {
+            errorMessage = error.localizedDescription
+            return nil
+        }
+    }
+
     // MARK: - Owner: Delete Category / Item
 
     func deleteCategory(_ categoryID: UUID) async {

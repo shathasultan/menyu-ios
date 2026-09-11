@@ -17,6 +17,7 @@ struct RestaurantRow: Codable {
     let closesAt: String?
     let latitude: Double?
     let longitude: Double?
+    let imageURL: String?
     let menuCategories: [MenuCategoryRow]?
 
     enum CodingKeys: String, CodingKey {
@@ -29,6 +30,7 @@ struct RestaurantRow: Codable {
         case isPublished = "is_published"
         case opensAt = "opens_at"
         case closesAt = "closes_at"
+        case imageURL = "image_url"
         case menuCategories = "menu_categories"
     }
 
@@ -49,6 +51,7 @@ struct RestaurantRow: Codable {
             closesAt: closesAt,
             latitude: latitude,
             longitude: longitude,
+            imageURL: imageURL,
             categories: cats
         )
     }

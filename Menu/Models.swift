@@ -68,6 +68,7 @@ struct Restaurant: Identifiable {
     var closesAt: String?
     var latitude: Double?
     var longitude: Double?
+    var imageURL: String?
     var categories: [MenuCategory]
 
     var hasLocation: Bool { latitude != nil && longitude != nil }

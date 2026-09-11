@@ -136,10 +136,50 @@ private struct RestaurantInfoCard: View {
     var onEditHours: () -> Void
     var onEditLocation: () -> Void
 
+    @State private var selectedPhoto: PhotosPickerItem? = nil
+    @State private var isUploadingPhoto = false
+
     private var isArabic: Bool { store.language == .arabic }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
+            PhotosPicker(selection: $selectedPhoto, matching: .images) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: MTheme.radiusSmall, style: .continuous)
+                        .fill(Color.mSurface2)
+                    if let urlString = restaurant.imageURL, let url = URL(string: urlString) {
+                        AsyncImage(url: url) { image in
+                            image.resizable().aspectRatio(contentMode: .fill)
+                        } placeholder: {
+                            Color.mSurface2
+                        }
+                        .clipShape(RoundedRectangle(cornerRadius: MTheme.radiusSmall, style: .continuous))
+                    } else {
+                        VStack(spacing: 6) {
+                            Image(systemName: "photo.badge.plus").font(.system(size: 22))
+                            Text(isArabic ? "أضيفي صورة للمطعم" : "Add a restaurant photo")
+                                .font(.plexArabic(11.5))
+                        }
+                        .foregroundStyle(Color.mInkFaint)
+                    }
+                    if isUploadingPhoto {
+                        Color.black.opacity(0.25)
+                        ProgressView().tint(.white)
+                    }
+                }
+                .frame(height: 110)
+                .clipped()
+            }
+            .buttonStyle(.plain)
+            .onChange(of: selectedPhoto) { _, newValue in
+                Task {
+                    guard let data = try? await newValue?.loadTransferable(type: Data.self) else { return }
+                    isUploadingPhoto = true
+                    await store.uploadRestaurantImage(restaurant.id, imageData: data)
+                    isUploadingPhoto = false
+                }
+            }
+
             HStack {
                 Text(restaurant.type.label(store.language))
                     .font(.plexArabic(12, weight: .semibold))
@@ -678,6 +718,9 @@ private struct EditPriceSheet: View {
     let item: MenuItem
     @State private var priceText = ""
     @State private var isSaving = false
+    @State private var selectedPhoto: PhotosPickerItem? = nil
+    @State private var previewImage: Image? = nil
+    @State private var isUploadingPhoto = false
 
     private var isArabic: Bool { store.language == .arabic }
 
@@ -692,6 +735,46 @@ private struct EditPriceSheet: View {
                             .foregroundStyle(Color.mInk)
                         Spacer()
                     }
+
+                    PhotosPicker(selection: $selectedPhoto, matching: .images) {
+                        ZStack {
+                            RoundedRectangle(cornerRadius: MTheme.radiusSmall, style: .continuous)
+                                .fill(Color.mSurface2)
+                            if let previewImage {
+                                previewImage.resizable().aspectRatio(contentMode: .fill)
+                                    .clipShape(RoundedRectangle(cornerRadius: MTheme.radiusSmall, style: .continuous))
+                            } else if let urlString = item.imageURL, let url = URL(string: urlString) {
+                                AsyncImage(url: url) { image in
+                                    image.resizable().aspectRatio(contentMode: .fill)
+                                } placeholder: { Color.mSurface2 }
+                                    .clipShape(RoundedRectangle(cornerRadius: MTheme.radiusSmall, style: .continuous))
+                            } else {
+                                VStack(spacing: 6) {
+                                    Image(systemName: "photo.badge.plus").font(.system(size: 22))
+                                    Text(isArabic ? "أضيفي صورة" : "Add a photo")
+                                        .font(.plexArabic(11.5))
+                                }
+                                .foregroundStyle(Color.mInkFaint)
+                            }
+                            if isUploadingPhoto {
+                                Color.black.opacity(0.25)
+                                ProgressView().tint(.white)
+                            }
+                        }
+                        .frame(height: 110)
+                        .clipped()
+                    }
+                    .buttonStyle(.plain)
+                    .onChange(of: selectedPhoto) { _, newValue in
+                        Task {
+                            guard let data = try? await newValue?.loadTransferable(type: Data.self) else { return }
+                            if let uiImage = UIImage(data: data) { previewImage = Image(uiImage: uiImage) }
+                            isUploadingPhoto = true
+                            await store.uploadItemImage(item.id, imageData: data)
+                            isUploadingPhoto = false
+                        }
+                    }
+
                     MFormField(label: isArabic ? "السعر الجديد (ر.س)" : "New price (SAR)") {
                         TextField("0", text: $priceText)
                             .keyboardType(.decimalPad)
@@ -702,7 +785,7 @@ private struct EditPriceSheet: View {
             }
             .background(Color.mBackground)
             .onAppear { priceText = "\(Int(item.price))" }
-            .navigationTitle(isArabic ? "تعديل السعر" : "Edit Price")
+            .navigationTitle(isArabic ? "تعديل المنتج" : "Edit Item")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 MSheetToolbar(
