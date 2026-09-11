@@ -97,6 +97,14 @@ struct MainTabView: View {
                 selectedTab = .account
             }
         }
+        .onChange(of: isVendor) { _, nowVendor in
+            // The "لوحتي" tab vanishes the moment the last restaurant is deleted —
+            // if it was the active tab, bounce back to Account instead of leaving
+            // `selectedTab` pointing at a tab that no longer exists.
+            if !nowVendor && selectedTab == .dashboard {
+                selectedTab = .account
+            }
+        }
     }
 }
 

@@ -175,8 +175,13 @@ final class AppStore {
     func deleteRestaurant(_ restaurantID: UUID) async {
         do {
             try await supabase.from("restaurants").delete().eq("id", value: restaurantID.uuidString).execute()
-            if selectedRestaurantID == restaurantID { selectedRestaurantID = nil }
             await loadMyRestaurants()
+            // Always leave selectedRestaurantID pointing at something real — otherwise
+            // OwnerDashboardView is stuck showing its loading spinner forever with
+            // nothing left to re-select it.
+            if !myRestaurants.contains(where: { $0.id == selectedRestaurantID }) {
+                selectedRestaurantID = myRestaurants.first?.id
+            }
         } catch {
             errorMessage = error.localizedDescription
         }
