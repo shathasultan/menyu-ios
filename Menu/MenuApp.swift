@@ -6,12 +6,16 @@
 //
 
 import SwiftUI
+import GoogleSignIn
 
 @main
 struct MenuApp: App {
     init() {
         MFontRegistrar.registerBundledFonts()
         configureTabBarAppearance()
+        if let clientID = Bundle.main.object(forInfoDictionaryKey: "GIDClientID") as? String {
+            GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: clientID)
+        }
     }
 
     private func configureTabBarAppearance() {
@@ -35,6 +39,9 @@ struct MenuApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .onOpenURL { url in
+                    GIDSignIn.sharedInstance.handle(url)
+                }
         }
     }
 }

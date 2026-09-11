@@ -653,6 +653,45 @@ private struct VendorSignInView: View {
                         .foregroundStyle(Color.mAccentStrong)
                 }
 
+                // Divider
+                HStack(spacing: 10) {
+                    Rectangle().fill(Color.mLine).frame(height: 1)
+                    Text(isArabic ? "أو" : "or")
+                        .font(.plexArabic(12))
+                        .foregroundStyle(Color.mInkFaint)
+                    Rectangle().fill(Color.mLine).frame(height: 1)
+                }
+
+                // Google Sign-In
+                Button {
+                    Task {
+                        guard let presenter = AppStore.topViewController() else { return }
+                        isLoading = true
+                        errorText = nil
+                        do {
+                            try await store.signInWithGoogle(presenting: presenter)
+                        } catch {
+                            errorText = error.localizedDescription
+                        }
+                        isLoading = false
+                    }
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "g.circle.fill")
+                        Text(isArabic ? "الدخول بحساب قوقل" : "Continue with Google")
+                    }
+                    .font(.plexArabic(14, weight: .semibold))
+                    .frame(maxWidth: .infinity)
+                    .padding(14)
+                    .background(Color.mSurface)
+                    .foregroundStyle(Color.mInk)
+                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14).strokeBorder(Color.mLine, lineWidth: 1)
+                    )
+                }
+                .disabled(isLoading)
+
                 Spacer().frame(height: 20)
             }
             .padding(.horizontal, 28)

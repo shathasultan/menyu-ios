@@ -1,6 +1,7 @@
 import SwiftUI
 import Supabase
 import PostgREST
+import GoogleSignIn
 
 @Observable
 @MainActor
@@ -157,8 +158,31 @@ final class AppStore {
 
     func signOut() async {
         try? await supabase.auth.signOut()
+        try? GIDSignIn.sharedInstance.signOut()
         currentUserID = nil
         myRestaurants = []
+    }
+
+    /// Signs in with Google via the native GoogleSignIn SDK, then exchanges the resulting
+    /// ID token with Supabase Auth. `presentingViewController` is required by the SDK to
+    /// host the Google account picker.
+    func signInWithGoogle(presenting presentingViewController: UIViewController) async throws {
+        let result = try await GIDSignIn.sharedInstance.signIn(withPresenting: presentingViewController)
+        guard let idToken = result.user.idToken?.tokenString else {
+            throw NSError(
+                domain: "AppStore.GoogleSignIn", code: -1,
+                userInfo: [NSLocalizedDescriptionKey: "لم يصل رمز الدخول من قوقل"]
+            )
+        }
+        try await supabase.auth.signInWithIdToken(
+            credentials: OpenIDConnectCredentials(
+                provider: .google,
+                idToken: idToken,
+                accessToken: result.user.accessToken.tokenString
+            )
+        )
+        await checkSession()
+        await loadMyRestaurants()
     }
 
     // MARK: - Favorites (local)
@@ -335,6 +359,20 @@ final class AppStore {
     }
 
     // MARK: - Helpers
+
+    /// Walks the key window's presented-controller chain to find a controller to host
+    /// Google's account picker (GoogleSignIn needs a concrete UIViewController, which
+    /// SwiftUI doesn't expose directly).
+    static func topViewController() -> UIViewController? {
+        guard let root = UIApplication.shared.connectedScenes
+            .compactMap({ $0 as? UIWindowScene })
+            .flatMap({ $0.windows })
+            .first(where: { $0.isKeyWindow })?.rootViewController
+        else { return nil }
+        var top = root
+        while let presented = top.presentedViewController { top = presented }
+        return top
+    }
 
     private func letterFromIndex(_ index: Int) -> String {
         guard index >= 0 && index < 26 else { return "?" }

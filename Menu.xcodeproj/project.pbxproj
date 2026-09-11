@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		C08E5F823053069200F0D369 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = C08E5F813053069200F0D369 /* Supabase */; };
+		C090B79E3054940700C24065 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 3DC4246C531A4EE19FCEE7CC /* GoogleSignIn */; };
+		C090B79F3054940700C24065 /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 0FFF6D63FFACFB2568A0EE26 /* GoogleSignInSwift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -27,6 +29,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C090B79F3054940700C24065 /* GoogleSignInSwift in Frameworks */,
+				C090B79E3054940700C24065 /* GoogleSignIn in Frameworks */,
 				C08E5F823053069200F0D369 /* Supabase in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -80,6 +84,8 @@
 			name = Menu;
 			packageProductDependencies = (
 				C08E5F813053069200F0D369 /* Supabase */,
+				3DC4246C531A4EE19FCEE7CC /* GoogleSignIn */,
+				0FFF6D63FFACFB2568A0EE26 /* GoogleSignInSwift */,
 			);
 			productName = Menu;
 			productReference = C0A5D5833051D73200D334FB /* Menu.app */;
@@ -111,6 +117,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				C0A5D5A13051F66E00D334FB /* XCRemoteSwiftPackageReference "supabase-swift" */,
+				38EE2D9BB057391C0FA9776B /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = C0A5D5843051D73200D334FB /* Products */;
@@ -274,6 +281,7 @@
 				DEVELOPMENT_TEAM = NGY34GZ6UN;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Menu/Info-Additions.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -306,6 +314,7 @@
 				DEVELOPMENT_TEAM = NGY34GZ6UN;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Menu/Info-Additions.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -352,6 +361,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		38EE2D9BB057391C0FA9776B /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/google/GoogleSignIn-iOS";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 10.0.0;
+			};
+		};
 		C0A5D5A13051F66E00D334FB /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/supabase/supabase-swift";
@@ -363,6 +380,16 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		0FFF6D63FFACFB2568A0EE26 /* GoogleSignInSwift */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 38EE2D9BB057391C0FA9776B /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignInSwift;
+		};
+		3DC4246C531A4EE19FCEE7CC /* GoogleSignIn */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 38EE2D9BB057391C0FA9776B /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignIn;
+		};
 		C08E5F813053069200F0D369 /* Supabase */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = C0A5D5A13051F66E00D334FB /* XCRemoteSwiftPackageReference "supabase-swift" */;
