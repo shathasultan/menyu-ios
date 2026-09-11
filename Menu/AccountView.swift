@@ -6,6 +6,7 @@ import SwiftUI
 struct AccountView: View {
     @Environment(AppStore.self) private var store
     @State private var showCreateRestaurant = false
+    @State private var confirmedVendorIntent = false
 
     private var isArabic: Bool { store.language == .arabic }
 
@@ -13,7 +14,11 @@ struct AccountView: View {
         NavigationStack {
             Group {
                 if !store.isAuthenticated {
-                    AccountSignInView()
+                    if confirmedVendorIntent {
+                        AccountSignInView()
+                    } else {
+                        VendorIntentGateView(onConfirm: { confirmedVendorIntent = true })
+                    }
                 } else {
                     List {
                         Section {
@@ -72,6 +77,64 @@ struct AccountView: View {
             }
             .navigationTitle(isArabic ? "حسابي" : "Account")
             .navigationBarTitleDisplayMode(.large)
+        }
+    }
+}
+
+// MARK: - Vendor Intent Gate
+
+/// Sits in front of the sign-in form. Browsing and favorites never need an account —
+/// the only reason to sign in today is to manage a restaurant — so this makes that
+/// explicit before showing any auth UI, instead of a generic "Account" screen that
+/// invites anyone to sign in without a reason to.
+struct VendorIntentGateView: View {
+    @Environment(AppStore.self) private var store
+    var onConfirm: () -> Void
+
+    private var isArabic: Bool { store.language == .arabic }
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 24) {
+                Spacer().frame(height: 24)
+
+                ZStack {
+                    Circle().fill(Color.mAccentSoft).frame(width: 88, height: 88)
+                    Image(systemName: "storefront.fill")
+                        .font(.system(size: 34))
+                        .foregroundStyle(Color.mAccentStrong)
+                }
+
+                VStack(spacing: 10) {
+                    Text(isArabic ? "هذا القسم لأصحاب الأعمال" : "This section is for business owners")
+                        .font(.plexArabic(18, weight: .bold))
+                        .foregroundStyle(Color.mInk)
+                        .multilineTextAlignment(.center)
+
+                    Text(isArabic
+                         ? "تصفّح المطاعم وحفظ المفضلة لا يحتاجان تسجيل دخول إطلاقًا. تسجيل الدخول هنا فقط لمن عنده مطعم أو مقهى أو كشك يبي يديره."
+                         : "Browsing and favorites never need an account. Signing in here is only for managing a restaurant, café, or kiosk.")
+                        .font(.plexArabic(13.5))
+                        .foregroundStyle(Color.mInkSoft)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 12)
+                }
+
+                Button(action: onConfirm) {
+                    Text(isArabic ? "نعم، عندي مطعم أو مقهى" : "Yes, I have a restaurant or café")
+                        .font(.plexArabic(14.5, weight: .semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(15)
+                        .background(Color.mAccent)
+                        .foregroundStyle(Color.mAccentInk)
+                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                }
+                .padding(.horizontal, 28)
+                .padding(.top, 8)
+
+                Spacer().frame(height: 20)
+            }
+            .padding(.horizontal, 16)
         }
     }
 }
