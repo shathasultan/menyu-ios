@@ -1,21 +1,33 @@
-//
-//  ContentView.swift
-//  Menu
-//
-//  Created by shatha alsawilam on 27/03/1448 AH.
-//
-
 import SwiftUI
 
 struct ContentView: View {
+    @State private var store = AppStore()
+
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+        TabView {
+            HomeView()
+                .tabItem {
+                    Label(store.language == .arabic ? "الرئيسية" : "Home", systemImage: "house.fill")
+                }
+
+            SearchView()
+                .tabItem {
+                    Label(store.language == .arabic ? "بحث" : "Search", systemImage: "magnifyingglass")
+                }
+
+            FavoritesView()
+                .tabItem {
+                    Label(store.language == .arabic ? "المفضلة" : "Favorites", systemImage: "heart.fill")
+                }
+
+            OwnerDashboardView()
+                .tabItem {
+                    Label(store.language == .arabic ? "لوحتي" : "Dashboard", systemImage: "square.grid.2x2.fill")
+                }
         }
-        .padding()
+        .environment(store)
+        .environment(\.layoutDirection, store.language == .arabic ? .rightToLeft : .leftToRight)
+        .tint(Color.brand)
     }
 }
 

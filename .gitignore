@@ -1,0 +1,12 @@
+# Xcode
+xcuserdata/
+*.xcuserstate
+DerivedData/
+.DS_Store
+
+# SwiftPM local resolution artifacts (Package.resolved is fine to commit, but local caches aren't)
+.swiftpm/
+.build/
+
+# Secrets — never commit real values
+Menu/Secrets.swift

@@ -1,0 +1,269 @@
+import SwiftUI
+import Supabase
+import PostgREST
+
+@Observable
+@MainActor
+final class AppStore {
+    var restaurants: [Restaurant] = []
+    var myRestaurants: [Restaurant] = []
+    var favoriteIDs: Set<UUID> = []
+    var language: Language = .arabic
+    var isLoading = false
+    var errorMessage: String? = nil
+    var currentUserID: UUID? = nil
+
+    var isAuthenticated: Bool { currentUserID != nil }
+
+    init() {
+        Task {
+            await checkSession()
+            await loadRestaurants()
+        }
+    }
+
+    // MARK: - Load Public Restaurants
+
+    func loadRestaurants() async {
+        isLoading = true
+        errorMessage = nil
+        do {
+            let rows: [RestaurantRow] = try await supabase
+                .from("restaurants")
+                .select("*, menu_categories(*, menu_items(*))")
+                .eq("is_published", value: true)
+                .order("created_at")
+                .execute()
+                .value
+            restaurants = rows.map { $0.toRestaurant() }
+            if isAuthenticated { await loadMyRestaurants() }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+        isLoading = false
+    }
+
+    func loadMyRestaurants() async {
+        guard let uid = currentUserID else { return }
+        do {
+            let rows: [RestaurantRow] = try await supabase
+                .from("restaurants")
+                .select("*, menu_categories(*, menu_items(*))")
+                .eq("owner_id", value: uid.uuidString)
+                .order("created_at")
+                .execute()
+                .value
+            myRestaurants = rows.map { $0.toRestaurant() }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    // MARK: - Auth
+
+    func checkSession() async {
+        do {
+            let session = try await supabase.auth.session
+            currentUserID = session.user.id
+        } catch {
+            currentUserID = nil
+        }
+    }
+
+    func signIn(email: String, password: String) async throws {
+        try await supabase.auth.signIn(email: email, password: password)
+        await checkSession()
+        await loadMyRestaurants()
+    }
+
+    func signUp(email: String, password: String) async throws {
+        try await supabase.auth.signUp(email: email, password: password)
+        await checkSession()
+    }
+
+    func signOut() async {
+        try? await supabase.auth.signOut()
+        currentUserID = nil
+        myRestaurants = []
+    }
+
+    // MARK: - Favorites (local)
+
+    func isFavorite(_ item: MenuItem) -> Bool { favoriteIDs.contains(item.id) }
+
+    func toggleFavorite(_ item: MenuItem) {
+        if favoriteIDs.contains(item.id) { favoriteIDs.remove(item.id) }
+        else { favoriteIDs.insert(item.id) }
+    }
+
+    var favoriteItems: [(restaurant: Restaurant, item: MenuItem)] {
+        restaurants.flatMap { r in
+            r.allItems.filter { favoriteIDs.contains($0.id) }.map { (r, $0) }
+        }
+    }
+
+    // MARK: - Owner: Add Category
+
+    func addCategory(to restaurantID: UUID, nameEn: String, nameAr: String) async {
+        do {
+            let indexRow: NextCategoryIndexRow = try await supabase
+                .from("restaurants")
+                .select("next_category_index")
+                .eq("id", value: restaurantID.uuidString)
+                .single()
+                .execute()
+                .value
+
+            let letter = letterFromIndex(indexRow.nextCategoryIndex)
+            let displayOrder = myRestaurants.first(where: { $0.id == restaurantID })?.categories.count ?? 0
+
+            struct InsertCategory: Encodable {
+                let restaurantID: UUID
+                let letter, name, nameAr: String
+                let displayOrder: Int
+                enum CodingKeys: String, CodingKey {
+                    case restaurantID = "restaurant_id"
+                    case letter, name
+                    case nameAr = "name_ar"
+                    case displayOrder = "display_order"
+                }
+            }
+            try await supabase
+                .from("menu_categories")
+                .insert(InsertCategory(restaurantID: restaurantID, letter: letter,
+                                       name: nameEn, nameAr: nameAr, displayOrder: displayOrder))
+                .execute()
+
+            struct IncrementIndex: Encodable {
+                let nextCategoryIndex: Int
+                enum CodingKeys: String, CodingKey { case nextCategoryIndex = "next_category_index" }
+            }
+            try await supabase
+                .from("restaurants")
+                .update(IncrementIndex(nextCategoryIndex: indexRow.nextCategoryIndex + 1))
+                .eq("id", value: restaurantID.uuidString)
+                .execute()
+
+            await loadMyRestaurants()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    // MARK: - Owner: Add Item
+
+    func addItem(to categoryID: UUID, restaurantID: UUID, nameEn: String, nameAr: String, price: Double) async {
+        do {
+            let catInfo: CategoryInfoRow = try await supabase
+                .from("menu_categories")
+                .select("letter, next_item_number")
+                .eq("id", value: categoryID.uuidString)
+                .single()
+                .execute()
+                .value
+
+            let code = catInfo.letter + String(format: "%02d", catInfo.nextItemNumber)
+            let displayOrder = myRestaurants
+                .first(where: { $0.id == restaurantID })?
+                .categories.first(where: { $0.id == categoryID })?
+                .items.count ?? 0
+
+            struct InsertItem: Encodable {
+                let categoryID: UUID
+                let code, name, nameAr: String
+                let price: Double
+                let displayOrder: Int
+                enum CodingKeys: String, CodingKey {
+                    case categoryID = "category_id"
+                    case code, name
+                    case nameAr = "name_ar"
+                    case price
+                    case displayOrder = "display_order"
+                }
+            }
+            try await supabase
+                .from("menu_items")
+                .insert(InsertItem(categoryID: categoryID, code: code, name: nameEn,
+                                   nameAr: nameAr, price: price, displayOrder: displayOrder))
+                .execute()
+
+            struct IncrementItemNumber: Encodable {
+                let nextItemNumber: Int
+                enum CodingKeys: String, CodingKey { case nextItemNumber = "next_item_number" }
+            }
+            try await supabase
+                .from("menu_categories")
+                .update(IncrementItemNumber(nextItemNumber: catInfo.nextItemNumber + 1))
+                .eq("id", value: categoryID.uuidString)
+                .execute()
+
+            await loadMyRestaurants()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    // MARK: - Owner: Toggle Availability
+
+    func toggleAvailability(itemID: UUID, categoryID: UUID, restaurantID: UUID) async {
+        guard let current = myRestaurants
+            .first(where: { $0.id == restaurantID })?
+            .categories.first(where: { $0.id == categoryID })?
+            .items.first(where: { $0.id == itemID }) else { return }
+
+        do {
+            struct UpdateAvailability: Encodable {
+                let isAvailable: Bool
+                enum CodingKeys: String, CodingKey { case isAvailable = "is_available" }
+            }
+            try await supabase
+                .from("menu_items")
+                .update(UpdateAvailability(isAvailable: !current.isAvailable))
+                .eq("id", value: itemID.uuidString)
+                .execute()
+            await loadMyRestaurants()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    // MARK: - Owner: Update Price
+
+    func updatePrice(itemID: UUID, categoryID: UUID, restaurantID: UUID, price: Double) async {
+        do {
+            struct UpdatePrice: Encodable {
+                let price: Double
+            }
+            try await supabase
+                .from("menu_items")
+                .update(UpdatePrice(price: price))
+                .eq("id", value: itemID.uuidString)
+                .execute()
+            await loadMyRestaurants()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    // MARK: - Search
+
+    func search(query: String) -> [(restaurant: Restaurant, item: MenuItem)] {
+        let q = query.trimmingCharacters(in: .whitespaces)
+        guard !q.isEmpty else { return [] }
+        let qLower = q.lowercased()
+        return restaurants.flatMap { r in
+            r.allItems.filter { item in
+                item.code.lowercased() == qLower ||
+                item.name.lowercased().contains(qLower) ||
+                item.nameAr.contains(q)
+            }.map { (r, $0) }
+        }
+    }
+
+    // MARK: - Helpers
+
+    private func letterFromIndex(_ index: Int) -> String {
+        guard index >= 0 && index < 26 else { return "?" }
+        return String(UnicodeScalar(65 + index)!)
+    }
+}
