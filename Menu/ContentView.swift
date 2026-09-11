@@ -20,10 +20,17 @@ struct ContentView: View {
                     Label(store.language == .arabic ? "المفضلة" : "Favorites", systemImage: "heart.fill")
                 }
 
-            OwnerDashboardView()
-                .tabItem {
-                    Label(store.language == .arabic ? "لوحتي" : "Dashboard", systemImage: "square.grid.2x2.fill")
-                }
+            if store.isAuthenticated && !store.myRestaurants.isEmpty {
+                OwnerDashboardView()
+                    .tabItem {
+                        Label(store.language == .arabic ? "لوحتي" : "Dashboard", systemImage: "square.grid.2x2.fill")
+                    }
+            } else {
+                AccountView()
+                    .tabItem {
+                        Label(store.language == .arabic ? "حسابي" : "Account", systemImage: "person.crop.circle.fill")
+                    }
+            }
         }
         .environment(store)
         .environment(\.layoutDirection, store.language == .arabic ? .rightToLeft : .leftToRight)

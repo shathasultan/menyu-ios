@@ -15,6 +15,7 @@ final class AppStore {
     var isLoading = false
     var errorMessage: String? = nil
     var currentUserID: UUID? = nil
+    var currentUserEmail: String? = nil
 
     var isAuthenticated: Bool { currentUserID != nil }
 
@@ -140,8 +141,10 @@ final class AppStore {
         do {
             let session = try await supabase.auth.session
             currentUserID = session.user.id
+            currentUserEmail = session.user.email
         } catch {
             currentUserID = nil
+            currentUserEmail = nil
         }
     }
 
@@ -160,6 +163,7 @@ final class AppStore {
         try? await supabase.auth.signOut()
         try? GIDSignIn.sharedInstance.signOut()
         currentUserID = nil
+        currentUserEmail = nil
         myRestaurants = []
     }
 

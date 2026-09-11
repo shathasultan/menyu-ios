@@ -13,11 +13,6 @@ struct OwnerDashboardView: View {
 
     var body: some View {
         NavigationStack {
-            if !store.isAuthenticated {
-                VendorSignInView()
-                    .navigationTitle(store.language == .arabic ? "لوحة التحكم" : "Dashboard")
-                    .navigationBarTitleDisplayMode(.large)
-            } else {
                 VStack(spacing: 0) {
                     restaurantPicker
                     Divider()
@@ -67,25 +62,9 @@ struct OwnerDashboardView: View {
                         .scrollContentBackground(.hidden)
                         .background(Color.mBackground)
                     } else {
-                        VStack(spacing: 16) {
-                            ContentUnavailableView(
-                                store.language == .arabic ? "لا توجد مطاعم" : "No Restaurants",
-                                systemImage: "fork.knife",
-                                description: Text(store.language == .arabic
-                                    ? "أنشئي مطعمك الأول لتبدئي إضافة منيوك"
-                                    : "Create your first restaurant to start building your menu")
-                            )
-                            Button {
-                                showCreateRestaurant = true
-                            } label: {
-                                Text(store.language == .arabic ? "إنشاء مطعم" : "Create Restaurant")
-                                    .font(.plexArabic(14.5, weight: .semibold))
-                                    .padding(.horizontal, 22).padding(.vertical, 11)
-                                    .background(Color.mAccent)
-                                    .foregroundStyle(Color.mAccentInk)
-                                    .clipShape(Capsule())
-                            }
-                        }
+                        Spacer()
+                        ProgressView()
+                        Spacer()
                     }
                 }
                 .navigationTitle(store.language == .arabic ? "لوحة التحكم" : "Dashboard")
@@ -143,7 +122,6 @@ struct OwnerDashboardView: View {
                         selectedRestaurantID = newID
                     })
                 }
-            }
         }
     }
 
@@ -223,7 +201,7 @@ private struct CategorySectionHeader: View {
 
 // MARK: - Create Restaurant Sheet
 
-private struct CreateRestaurantSheet: View {
+struct CreateRestaurantSheet: View {
     @Environment(AppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     var onCreated: (UUID) -> Void
@@ -533,168 +511,3 @@ private struct EditPriceSheet: View {
     }
 }
 
-// MARK: - Vendor Sign In View
-
-private struct VendorSignInView: View {
-    @Environment(AppStore.self) private var store
-    @State private var email = ""
-    @State private var password = ""
-    @State private var isSignUp = false
-    @State private var isLoading = false
-    @State private var errorText: String? = nil
-
-    private var isArabic: Bool { store.language == .arabic }
-
-    var body: some View {
-        ScrollView {
-            VStack(spacing: 32) {
-                Spacer().frame(height: 12)
-
-                // Icon + Title
-                VStack(spacing: 14) {
-                    ZStack {
-                        Circle()
-                            .fill(Color.mAccentSoft)
-                            .frame(width: 88, height: 88)
-                        Image(systemName: "square.grid.2x2.fill")
-                            .font(.system(size: 34))
-                            .foregroundStyle(Color.mAccentStrong)
-                    }
-
-                    Text(isArabic ? "لوحة تحكم صاحب المطعم" : "Vendor Dashboard")
-                        .font(.plexArabic(19, weight: .bold))
-                        .foregroundStyle(Color.mInk)
-
-                    Text(isArabic
-                         ? "سجّل دخولك لإدارة منيوك"
-                         : "Sign in to manage your menu")
-                        .font(.plexArabic(13.5))
-                        .foregroundStyle(Color.mInkSoft)
-                        .multilineTextAlignment(.center)
-                }
-
-                // Form
-                VStack(spacing: 12) {
-                    TextField(isArabic ? "البريد الإلكتروني" : "Email", text: $email)
-                        .keyboardType(.emailAddress)
-                        .autocorrectionDisabled()
-                        .textInputAutocapitalization(.never)
-                        .font(.plexArabic(14))
-                        .padding(14)
-                        .background(Color.mSurface)
-                        .clipShape(RoundedRectangle(cornerRadius: MTheme.radiusSmall))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: MTheme.radiusSmall).strokeBorder(Color.mLine, lineWidth: 1)
-                        )
-
-                    SecureField(isArabic ? "كلمة المرور" : "Password", text: $password)
-                        .font(.plexArabic(14))
-                        .padding(14)
-                        .background(Color.mSurface)
-                        .clipShape(RoundedRectangle(cornerRadius: MTheme.radiusSmall))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: MTheme.radiusSmall).strokeBorder(Color.mLine, lineWidth: 1)
-                        )
-                }
-
-                // Error
-                if let errorText {
-                    Text(errorText)
-                        .font(.plexArabic(12))
-                        .foregroundStyle(Color.mBad)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 8)
-                }
-
-                // Action button
-                Button {
-                    Task {
-                        isLoading = true
-                        errorText = nil
-                        do {
-                            if isSignUp {
-                                try await store.signUp(email: email, password: password)
-                            } else {
-                                try await store.signIn(email: email, password: password)
-                            }
-                        } catch {
-                            errorText = error.localizedDescription
-                        }
-                        isLoading = false
-                    }
-                } label: {
-                    HStack(spacing: 8) {
-                        if isLoading {
-                            ProgressView().tint(.white).scaleEffect(0.85)
-                        }
-                        Text(isSignUp
-                             ? (isArabic ? "إنشاء حساب" : "Create Account")
-                             : (isArabic ? "تسجيل الدخول" : "Sign In"))
-                            .font(.plexArabic(14.5, weight: .semibold))
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(15)
-                    .background(email.isEmpty || password.isEmpty || isLoading
-                                ? Color.mAccent.opacity(0.4) : Color.mAccent)
-                    .foregroundStyle(Color.mAccentInk)
-                    .clipShape(RoundedRectangle(cornerRadius: 14))
-                }
-                .disabled(email.isEmpty || password.isEmpty || isLoading)
-
-                // Toggle sign-in / sign-up
-                Button {
-                    isSignUp.toggle()
-                    errorText = nil
-                } label: {
-                    Text(isSignUp
-                         ? (isArabic ? "لديك حساب؟ سجّل الدخول" : "Already have an account? Sign In")
-                         : (isArabic ? "لا حساب لديك؟ أنشئ حسابًا" : "No account? Create one"))
-                        .font(.plexArabic(13.5))
-                        .foregroundStyle(Color.mAccentStrong)
-                }
-
-                // Divider
-                HStack(spacing: 10) {
-                    Rectangle().fill(Color.mLine).frame(height: 1)
-                    Text(isArabic ? "أو" : "or")
-                        .font(.plexArabic(12))
-                        .foregroundStyle(Color.mInkFaint)
-                    Rectangle().fill(Color.mLine).frame(height: 1)
-                }
-
-                // Google Sign-In
-                Button {
-                    Task {
-                        guard let presenter = AppStore.topViewController() else { return }
-                        isLoading = true
-                        errorText = nil
-                        do {
-                            try await store.signInWithGoogle(presenting: presenter)
-                        } catch {
-                            errorText = error.localizedDescription
-                        }
-                        isLoading = false
-                    }
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "g.circle.fill")
-                        Text(isArabic ? "الدخول بحساب قوقل" : "Continue with Google")
-                    }
-                    .font(.plexArabic(14, weight: .semibold))
-                    .frame(maxWidth: .infinity)
-                    .padding(14)
-                    .background(Color.mSurface)
-                    .foregroundStyle(Color.mInk)
-                    .clipShape(RoundedRectangle(cornerRadius: 14))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 14).strokeBorder(Color.mLine, lineWidth: 1)
-                    )
-                }
-                .disabled(isLoading)
-
-                Spacer().frame(height: 20)
-            }
-            .padding(.horizontal, 28)
-        }
-    }
-}
