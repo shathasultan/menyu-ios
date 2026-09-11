@@ -13,8 +13,20 @@ struct ItemDetailView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
+                if let urlString = liveItem.imageURL, let url = URL(string: urlString) {
+                    AsyncImage(url: url) { image in
+                        image.resizable().aspectRatio(contentMode: .fill)
+                    } placeholder: {
+                        Color.mSurface2
+                    }
+                    .frame(height: 180)
+                    .frame(maxWidth: .infinity)
+                    .clipShape(RoundedRectangle(cornerRadius: MTheme.radius, style: .continuous))
+                    .padding(.top, 20)
+                }
+
                 CodeChip(code: liveItem.code, large: true)
-                    .padding(.top, 28)
+                    .padding(.top, liveItem.imageURL == nil ? 28 : 8)
 
                 VStack(spacing: 6) {
                     Text(liveItem.displayName(store.language))

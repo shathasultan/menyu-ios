@@ -36,6 +36,7 @@ struct MenuItem: Identifiable {
     var nameAr: String
     var price: Double
     var isAvailable: Bool
+    var imageURL: String?
 
     func displayName(_ language: Language) -> String {
         language == .arabic ? nameAr : name
@@ -63,7 +64,13 @@ struct Restaurant: Identifiable {
     var descriptionEn: String
     var descriptionAr: String
     var isPublished: Bool
+    var opensAt: String?
+    var closesAt: String?
+    var latitude: Double?
+    var longitude: Double?
     var categories: [MenuCategory]
+
+    var hasLocation: Bool { latitude != nil && longitude != nil }
 
     func displayName(_ language: Language) -> String {
         language == .arabic ? nameAr : name

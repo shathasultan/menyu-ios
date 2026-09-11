@@ -1,7 +1,7 @@
 import SwiftUI
 
 enum AppTab: Hashable {
-    case home, search, favorites, accountOrDashboard, admin
+    case home, search, favorites, account, dashboard, admin
 }
 
 struct ContentView: View {
@@ -46,6 +46,8 @@ struct MainTabView: View {
     @State private var selectedTab: AppTab = .home
     let startOnAccountTab: Bool
 
+    private var isVendor: Bool { store.isAuthenticated && !store.myRestaurants.isEmpty }
+
     var body: some View {
         TabView(selection: $selectedTab) {
             HomeView()
@@ -60,24 +62,26 @@ struct MainTabView: View {
                 }
                 .tag(AppTab.search)
 
-            FavoritesView()
-                .tabItem {
-                    Label(store.language == .arabic ? "المفضلة" : "Favorites", systemImage: "heart.fill")
-                }
-                .tag(AppTab.favorites)
+            if !isVendor {
+                FavoritesView()
+                    .tabItem {
+                        Label(store.language == .arabic ? "المفضلة" : "Favorites", systemImage: "heart.fill")
+                    }
+                    .tag(AppTab.favorites)
+            }
 
-            if store.isAuthenticated && !store.myRestaurants.isEmpty {
+            AccountView()
+                .tabItem {
+                    Label(store.language == .arabic ? "حسابي" : "Account", systemImage: "person.crop.circle.fill")
+                }
+                .tag(AppTab.account)
+
+            if isVendor {
                 OwnerDashboardView()
                     .tabItem {
                         Label(store.language == .arabic ? "لوحتي" : "Dashboard", systemImage: "square.grid.2x2.fill")
                     }
-                    .tag(AppTab.accountOrDashboard)
-            } else {
-                AccountView()
-                    .tabItem {
-                        Label(store.language == .arabic ? "حسابي" : "Account", systemImage: "person.crop.circle.fill")
-                    }
-                    .tag(AppTab.accountOrDashboard)
+                    .tag(AppTab.dashboard)
             }
 
             if store.isAdmin {
@@ -90,7 +94,7 @@ struct MainTabView: View {
         }
         .onAppear {
             if startOnAccountTab {
-                selectedTab = .accountOrDashboard
+                selectedTab = .account
             }
         }
     }

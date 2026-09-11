@@ -154,6 +154,16 @@ private struct MenuItemRow: View {
 
     var body: some View {
         HStack(spacing: 14) {
+            if let urlString = item.imageURL, let url = URL(string: urlString) {
+                AsyncImage(url: url) { image in
+                    image.resizable().aspectRatio(contentMode: .fill)
+                } placeholder: {
+                    Color.mSurface2
+                }
+                .frame(width: 50, height: 50)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            }
+
             CodeChip(code: item.code, large: false)
                 .opacity(item.isAvailable ? 1 : 0.5)
 

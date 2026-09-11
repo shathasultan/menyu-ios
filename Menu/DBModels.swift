@@ -13,16 +13,22 @@ struct RestaurantRow: Codable {
     let descriptionAr: String
     let nextCategoryIndex: Int
     let isPublished: Bool
+    let opensAt: String?
+    let closesAt: String?
+    let latitude: Double?
+    let longitude: Double?
     let menuCategories: [MenuCategoryRow]?
 
     enum CodingKeys: String, CodingKey {
-        case id, name, type
+        case id, name, type, latitude, longitude
         case ownerID = "owner_id"
         case nameAr = "name_ar"
         case descriptionEn = "description_en"
         case descriptionAr = "description_ar"
         case nextCategoryIndex = "next_category_index"
         case isPublished = "is_published"
+        case opensAt = "opens_at"
+        case closesAt = "closes_at"
         case menuCategories = "menu_categories"
     }
 
@@ -39,6 +45,10 @@ struct RestaurantRow: Codable {
             descriptionEn: descriptionEn,
             descriptionAr: descriptionAr,
             isPublished: isPublished,
+            opensAt: opensAt,
+            closesAt: closesAt,
+            latitude: latitude,
+            longitude: longitude,
             categories: cats
         )
     }
@@ -77,6 +87,7 @@ struct MenuItemRecord: Codable {
     let price: Double
     let isAvailable: Bool
     let displayOrder: Int
+    let imageURL: String?
 
     enum CodingKeys: String, CodingKey {
         case id, code, name
@@ -84,10 +95,11 @@ struct MenuItemRecord: Codable {
         case price
         case isAvailable = "is_available"
         case displayOrder = "display_order"
+        case imageURL = "image_url"
     }
 
     func toMenuItem() -> MenuItem {
-        MenuItem(id: id, code: code, name: name, nameAr: nameAr, price: price, isAvailable: isAvailable)
+        MenuItem(id: id, code: code, name: name, nameAr: nameAr, price: price, isAvailable: isAvailable, imageURL: imageURL)
     }
 }
 

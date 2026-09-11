@@ -17,6 +17,10 @@ final class AppStore {
     var currentUserID: UUID? = nil
     var currentUserEmail: String? = nil
     var pendingRestaurants: [Restaurant] = []
+    /// The restaurant a vendor is currently managing — set from AccountView's
+    /// restaurant list, read by OwnerDashboardView. Shared here so the two
+    /// screens (now separate tabs) stay in sync.
+    var selectedRestaurantID: UUID? = nil
     /// Set once when RoleGateView's "I'm a vendor" choice routes straight into
     /// sign-in — lets AccountView skip its own VendorIntentGateView so the
     /// choice isn't asked twice back to back. Consumed (reset to false) on read.
@@ -122,6 +126,85 @@ final class AppStore {
 
             await loadMyRestaurants()
             return inserted.id
+        } catch {
+            errorMessage = error.localizedDescription
+            return nil
+        }
+    }
+
+    // MARK: - Owner: Update Hours / Location / Delete Restaurant
+
+    func updateRestaurantHours(_ restaurantID: UUID, opensAt: String, closesAt: String) async {
+        do {
+            struct UpdateHours: Encodable {
+                let opensAt: String
+                let closesAt: String
+                enum CodingKeys: String, CodingKey {
+                    case opensAt = "opens_at"
+                    case closesAt = "closes_at"
+                }
+            }
+            try await supabase
+                .from("restaurants")
+                .update(UpdateHours(opensAt: opensAt, closesAt: closesAt))
+                .eq("id", value: restaurantID.uuidString)
+                .execute()
+            await loadMyRestaurants()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func updateRestaurantLocation(_ restaurantID: UUID, latitude: Double, longitude: Double) async {
+        do {
+            struct UpdateLocation: Encodable {
+                let latitude: Double
+                let longitude: Double
+            }
+            try await supabase
+                .from("restaurants")
+                .update(UpdateLocation(latitude: latitude, longitude: longitude))
+                .eq("id", value: restaurantID.uuidString)
+                .execute()
+            await loadMyRestaurants()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func deleteRestaurant(_ restaurantID: UUID) async {
+        do {
+            try await supabase.from("restaurants").delete().eq("id", value: restaurantID.uuidString).execute()
+            if selectedRestaurantID == restaurantID { selectedRestaurantID = nil }
+            await loadMyRestaurants()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    // MARK: - Owner: Item Image
+
+    @discardableResult
+    func uploadItemImage(_ itemID: UUID, imageData: Data) async -> String? {
+        do {
+            let path = "\(itemID.uuidString).jpg"
+            try await supabase.storage.from("menu-images").upload(
+                path, data: imageData,
+                options: FileOptions(cacheControl: "3600", contentType: "image/jpeg", upsert: true)
+            )
+            let publicURL = try supabase.storage.from("menu-images").getPublicURL(path: path)
+
+            struct UpdateImage: Encodable {
+                let imageURL: String
+                enum CodingKeys: String, CodingKey { case imageURL = "image_url" }
+            }
+            try await supabase
+                .from("menu_items")
+                .update(UpdateImage(imageURL: publicURL.absoluteString))
+                .eq("id", value: itemID.uuidString)
+                .execute()
+            await loadMyRestaurants()
+            return publicURL.absoluteString
         } catch {
             errorMessage = error.localizedDescription
             return nil

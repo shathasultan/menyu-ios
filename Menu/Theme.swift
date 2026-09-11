@@ -116,3 +116,64 @@ struct MCard: ViewModifier {
 extension View {
     func mCardStyle() -> some View { modifier(MCard()) }
 }
+
+/// Brand-styled text input used across the vendor forms — replaces the default
+/// system-grey `Form`/`TextField` look with the app's own surface/line tokens.
+struct MTextFieldStyle: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .font(.plexArabic(14))
+            .padding(14)
+            .background(Color.mSurface)
+            .clipShape(RoundedRectangle(cornerRadius: MTheme.radiusSmall, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: MTheme.radiusSmall, style: .continuous)
+                    .strokeBorder(Color.mLine, lineWidth: 1)
+            )
+    }
+}
+
+extension View {
+    func mFieldStyle() -> some View { modifier(MTextFieldStyle()) }
+}
+
+/// A labeled field wrapper (label above input) used throughout the redesigned
+/// vendor forms, so every form reads consistently instead of a bare `Form`.
+struct MFormField<Content: View>: View {
+    let label: String
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(label)
+                .font(.plexArabic(12, weight: .semibold))
+                .foregroundStyle(Color.mInkSoft)
+            content
+        }
+    }
+}
+
+/// Sheet chrome (title + Cancel/primary action) matching the brand instead of
+/// the default system nav-bar text-button look, used by every vendor form sheet.
+struct MSheetToolbar: ToolbarContent {
+    let isArabic: Bool
+    let cancelTitle: String
+    let actionTitle: String
+    let actionDisabled: Bool
+    let onCancel: () -> Void
+    let onAction: () -> Void
+
+    var body: some ToolbarContent {
+        ToolbarItem(placement: .topBarLeading) {
+            Button(cancelTitle, action: onCancel)
+                .font(.plexArabic(14))
+                .foregroundStyle(Color.mInkSoft)
+        }
+        ToolbarItem(placement: .topBarTrailing) {
+            Button(actionTitle, action: onAction)
+                .font(.plexArabic(14, weight: .bold))
+                .foregroundStyle(actionDisabled ? Color.mInkFaint : Color.mAccentStrong)
+                .disabled(actionDisabled)
+        }
+    }
+}

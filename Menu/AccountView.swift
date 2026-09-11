@@ -36,12 +36,47 @@ struct AccountView: View {
                         }
                         .listRowBackground(Color.mSurface)
 
+                        if !store.myRestaurants.isEmpty {
+                            Section {
+                                ForEach(store.myRestaurants) { restaurant in
+                                    Button {
+                                        store.selectedRestaurantID = restaurant.id
+                                    } label: {
+                                        HStack(spacing: 10) {
+                                            VStack(alignment: .leading, spacing: 2) {
+                                                Text(restaurant.displayName(store.language))
+                                                    .font(.plexArabic(14, weight: .medium))
+                                                    .foregroundStyle(Color.mInk)
+                                                Text(restaurant.isPublished
+                                                     ? (isArabic ? "منشور" : "Published")
+                                                     : (isArabic ? "قيد المراجعة" : "Under review"))
+                                                    .font(.plexArabic(11))
+                                                    .foregroundStyle(restaurant.isPublished ? Color.mGood : Color.mAccentStrong)
+                                            }
+                                            Spacer()
+                                            if store.selectedRestaurantID == restaurant.id {
+                                                Image(systemName: "checkmark.circle.fill")
+                                                    .foregroundStyle(Color.mAccent)
+                                            }
+                                        }
+                                    }
+                                }
+                            } header: {
+                                Text(isArabic ? "مطاعمي" : "My Restaurants")
+                                    .font(.plexArabic(12, weight: .semibold))
+                                    .foregroundStyle(Color.mInkSoft)
+                            }
+                            .listRowBackground(Color.mSurface)
+                        }
+
                         Section {
                             Button {
                                 showCreateRestaurant = true
                             } label: {
                                 Label(
-                                    isArabic ? "أنشئي مطعمك الأول" : "Create your first restaurant",
+                                    store.myRestaurants.isEmpty
+                                        ? (isArabic ? "أنشئي مطعمك الأول" : "Create your first restaurant")
+                                        : (isArabic ? "إضافة مطعم جديد" : "Add another restaurant"),
                                     systemImage: "storefront"
                                 )
                                 .font(.plexArabic(14, weight: .semibold))
@@ -71,7 +106,9 @@ struct AccountView: View {
                     .scrollContentBackground(.hidden)
                     .background(Color.mBackground)
                     .sheet(isPresented: $showCreateRestaurant) {
-                        CreateRestaurantSheet(onCreated: { _ in })
+                        CreateRestaurantSheet(onCreated: { newID in
+                            store.selectedRestaurantID = newID
+                        })
                     }
                 }
             }
@@ -82,6 +119,14 @@ struct AccountView: View {
             if store.skipVendorGateOnce {
                 confirmedVendorIntent = true
                 store.skipVendorGateOnce = false
+            }
+            if store.selectedRestaurantID == nil {
+                store.selectedRestaurantID = store.myRestaurants.first?.id
+            }
+        }
+        .onChange(of: store.myRestaurants.count) { _, _ in
+            if store.selectedRestaurantID == nil {
+                store.selectedRestaurantID = store.myRestaurants.first?.id
             }
         }
     }
