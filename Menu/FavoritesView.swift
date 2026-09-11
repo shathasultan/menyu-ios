@@ -30,15 +30,23 @@ struct FavoritesView: View {
                 } else {
                     List {
                         ForEach(grouped, id: \.id) { group in
-                            Section(group.restaurant.displayName(store.language)) {
+                            Section {
                                 ForEach(group.items) { item in
                                     FavoriteItemRow(item: item)
                                 }
+                                .listRowBackground(Color.mSurface)
+                            } header: {
+                                Text(group.restaurant.displayName(store.language))
+                                    .font(.plexArabic(12.5, weight: .semibold))
+                                    .foregroundStyle(Color.mInkSoft)
                             }
                         }
                     }
+                    .scrollContentBackground(.hidden)
+                    .background(Color.mBackground)
                 }
             }
+            .background(Color.mBackground)
             .navigationTitle(store.language == .arabic ? "المفضلة" : "Favorites")
         }
     }
@@ -50,19 +58,16 @@ private struct FavoriteItemRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Text(item.code)
-                .font(.system(.callout, design: .monospaced, weight: .black))
-                .foregroundStyle(Color.brand)
-                .frame(width: 44, height: 44)
-                .background(Color.brandLight)
-                .clipShape(RoundedRectangle(cornerRadius: 10))
+            CodeChip(code: item.code)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.displayName(store.language))
-                    .font(.subheadline).fontWeight(.medium)
+                    .font(.plexArabic(14, weight: .medium))
+                    .foregroundStyle(Color.mInk)
                 Text(priceText(item.price))
-                    .font(.caption).fontWeight(.semibold)
-                    .foregroundStyle(Color.brand)
+                    .font(.plexMono(12, weight: .semibold))
+                    .foregroundStyle(Color.mInk)
+                    .environment(\.layoutDirection, .leftToRight)
             }
 
             Spacer()
@@ -70,7 +75,7 @@ private struct FavoriteItemRow: View {
             Button {
                 store.toggleFavorite(item)
             } label: {
-                Image(systemName: "heart.fill").foregroundStyle(.red)
+                Image(systemName: "heart.fill").foregroundStyle(Color.mBad)
             }
             .buttonStyle(.plain)
         }

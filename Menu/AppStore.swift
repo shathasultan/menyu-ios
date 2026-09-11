@@ -59,6 +59,66 @@ final class AppStore {
         }
     }
 
+    // MARK: - Owner: Create Restaurant
+
+    @discardableResult
+    func createRestaurant(nameEn: String, nameAr: String, type: RestaurantType, descriptionEn: String, descriptionAr: String) async -> UUID? {
+        guard let uid = currentUserID else { return nil }
+        do {
+            struct InsertRestaurant: Encodable {
+                let ownerID: UUID
+                let name, nameAr, type, descriptionEn, descriptionAr: String
+                enum CodingKeys: String, CodingKey {
+                    case ownerID = "owner_id"
+                    case name
+                    case nameAr = "name_ar"
+                    case type
+                    case descriptionEn = "description_en"
+                    case descriptionAr = "description_ar"
+                }
+            }
+            struct InsertedID: Decodable { let id: UUID }
+
+            let inserted: InsertedID = try await supabase
+                .from("restaurants")
+                .insert(InsertRestaurant(
+                    ownerID: uid,
+                    name: nameEn, nameAr: nameAr, type: type.rawValue,
+                    descriptionEn: descriptionEn, descriptionAr: descriptionAr
+                ))
+                .select("id")
+                .single()
+                .execute()
+                .value
+
+            await loadMyRestaurants()
+            return inserted.id
+        } catch {
+            errorMessage = error.localizedDescription
+            return nil
+        }
+    }
+
+    // MARK: - Owner: Delete Category / Item
+
+    func deleteCategory(_ categoryID: UUID) async {
+        do {
+            try await supabase.from("menu_categories").delete().eq("id", value: categoryID.uuidString).execute()
+            await loadMyRestaurants()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func deleteItem(_ itemID: UUID) async {
+        do {
+            try await supabase.from("menu_items").delete().eq("id", value: itemID.uuidString).execute()
+            await loadMyRestaurants()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     // MARK: - Auth
 
     func checkSession() async {

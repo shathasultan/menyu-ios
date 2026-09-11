@@ -18,15 +18,17 @@ struct HomeView: View {
                     // Section header
                     HStack {
                         Text(store.language == .arabic ? "المطاعم والمقاهي" : "Restaurants & Cafés")
-                            .font(.headline)
+                            .font(.plexArabic(15, weight: .bold))
+                            .foregroundStyle(Color.mInk)
                         Spacer()
                         if !store.isLoading {
                             Text("\(filtered.count)")
-                                .font(.caption).fontWeight(.medium)
+                                .font(.plexMono(12, weight: .semibold))
                                 .padding(.horizontal, 8).padding(.vertical, 3)
-                                .background(Color(.systemGray6))
-                                .foregroundStyle(.secondary)
+                                .background(Color.mSurface2)
+                                .foregroundStyle(Color.mInkSoft)
                                 .clipShape(Capsule())
+                                .environment(\.layoutDirection, .leftToRight)
                         }
                     }
                     .padding(.horizontal)
@@ -48,10 +50,10 @@ struct HomeView: View {
                                 Task { await store.loadRestaurants() }
                             } label: {
                                 Text(store.language == .arabic ? "المحاولة مجددًا" : "Try Again")
-                                    .font(.subheadline).fontWeight(.semibold)
+                                    .font(.plexArabic(14.5, weight: .semibold))
                                     .padding(.horizontal, 24).padding(.vertical, 10)
-                                    .background(Color.brand)
-                                    .foregroundStyle(.white)
+                                    .background(Color.mAccent)
+                                    .foregroundStyle(Color.mAccentInk)
                                     .clipShape(Capsule())
                             }
                         }
@@ -79,7 +81,7 @@ struct HomeView: View {
                 }
                 .padding(.top, 12)
             }
-            .background(Color(.systemGroupedBackground))
+            .background(Color.mBackground)
             .refreshable { await store.loadRestaurants() }
             .navigationTitle(store.language == .arabic ? "منيو" : "Menū")
             .navigationBarTitleDisplayMode(.large)
@@ -89,10 +91,10 @@ struct HomeView: View {
                         store.language = store.language == .arabic ? .english : .arabic
                     } label: {
                         Text(store.language == .arabic ? "EN" : "ع")
-                            .font(.system(.subheadline, design: .rounded, weight: .bold))
+                            .font(.plexMono(14, weight: .bold))
                             .frame(width: 34, height: 34)
-                            .background(Color.brandLight)
-                            .foregroundStyle(Color.brand)
+                            .background(Color.mAccentSoft)
+                            .foregroundStyle(Color.mAccentStrong)
                             .clipShape(Circle())
                     }
                 }
@@ -138,17 +140,15 @@ struct FilterChip: View {
                     Image(systemName: icon).font(.caption)
                 }
                 Text(title)
-                    .font(.subheadline)
-                    .fontWeight(isSelected ? .semibold : .regular)
+                    .font(.plexArabic(13, weight: isSelected ? .semibold : .regular))
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
-            .background(isSelected ? Color.brand : Color(.systemBackground))
-            .foregroundStyle(isSelected ? .white : .primary)
+            .background(isSelected ? Color.mInk : Color.mSurface)
+            .foregroundStyle(isSelected ? Color.mBackground : Color.mInkSoft)
             .clipShape(Capsule())
-            .shadow(
-                color: isSelected ? Color.brand.opacity(0.3) : Color.black.opacity(0.05),
-                radius: 5, x: 0, y: 2
+            .overlay(
+                Capsule().strokeBorder(isSelected ? Color.clear : Color.mLine, lineWidth: 1)
             )
         }
     }
@@ -163,40 +163,35 @@ struct RestaurantCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             ZStack {
-                LinearGradient(
-                    colors: [Color.brandLight, Color.brand.opacity(0.08)],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
+                Color.mAccentSoft
                 Image(systemName: restaurant.type.icon)
-                    .font(.system(size: 38))
-                    .foregroundStyle(Color.brand)
+                    .font(.system(size: 34))
+                    .foregroundStyle(Color.mAccentStrong)
             }
-            .frame(height: 96)
+            .frame(height: 88)
 
             VStack(alignment: .leading, spacing: 6) {
                 Text(restaurant.displayName(store.language))
-                    .font(.subheadline).fontWeight(.bold)
-                    .lineLimit(1).foregroundStyle(.primary)
+                    .font(.plexArabic(14.5, weight: .bold))
+                    .lineLimit(1).foregroundStyle(Color.mInk)
 
                 HStack(spacing: 3) {
                     Image(systemName: restaurant.type.icon).font(.system(size: 9))
                     Text(restaurant.type.label(store.language))
-                        .font(.caption2).fontWeight(.semibold)
+                        .font(.plexArabic(11, weight: .semibold))
                 }
                 .padding(.horizontal, 8).padding(.vertical, 4)
-                .background(Color.brand.opacity(0.1))
-                .foregroundStyle(Color.brand)
+                .background(Color.mAccentSoft)
+                .foregroundStyle(Color.mAccentStrong)
                 .clipShape(Capsule())
 
                 Text("\(restaurant.allItems.count) \(store.language == .arabic ? "منتج" : "items")")
-                    .font(.caption2).foregroundStyle(.secondary)
+                    .font(.plexArabic(11))
+                    .foregroundStyle(Color.mInkFaint)
             }
             .padding(12)
         }
-        .background(Color(.systemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 18))
-        .shadow(color: Color.black.opacity(0.07), radius: 10, x: 0, y: 3)
+        .mCardStyle()
     }
 }
 
@@ -207,30 +202,28 @@ private struct SkeletonRestaurantCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Color(.systemGray5).frame(height: 96)
+            Color.mSurface2.frame(height: 88)
 
             VStack(alignment: .leading, spacing: 8) {
                 Capsule()
-                    .fill(Color(.systemGray5))
+                    .fill(Color.mSurface2)
                     .frame(height: 13)
                     .padding(.trailing, 28)
 
                 HStack(spacing: 0) {
                     Capsule()
-                        .fill(Color(.systemGray6))
+                        .fill(Color.mSurface2)
                         .frame(width: 56, height: 18)
                     Spacer()
                 }
 
                 Capsule()
-                    .fill(Color(.systemGray6))
+                    .fill(Color.mSurface2)
                     .frame(width: 48, height: 10)
             }
             .padding(12)
         }
-        .background(Color(.systemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 18))
-        .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 2)
+        .mCardStyle()
         .opacity(opacity)
         .onAppear {
             withAnimation(.easeInOut(duration: 0.85).repeatForever(autoreverses: true)) {

@@ -5,6 +5,7 @@ struct OwnerDashboardView: View {
     @State private var selectedRestaurantID: UUID? = nil
     @State private var showAddCategory = false
     @State private var addItemForCategory: MenuCategory? = nil
+    @State private var showCreateRestaurant = false
 
     var selectedRestaurant: Restaurant? {
         store.myRestaurants.first(where: { $0.id == selectedRestaurantID })
@@ -35,7 +36,15 @@ struct OwnerDashboardView: View {
                                             categoryID: category.id,
                                             item: item
                                         )
+                                        .swipeActions(edge: .trailing) {
+                                            Button(role: .destructive) {
+                                                Task { await store.deleteItem(item.id) }
+                                            } label: {
+                                                Label(store.language == .arabic ? "حذف" : "Delete", systemImage: "trash")
+                                            }
+                                        }
                                     }
+                                    .listRowBackground(Color.mSurface)
                                     Button {
                                         addItemForCategory = category
                                     } label: {
@@ -43,40 +52,69 @@ struct OwnerDashboardView: View {
                                             store.language == .arabic ? "إضافة منتج" : "Add Item",
                                             systemImage: "plus.circle"
                                         )
-                                        .font(.subheadline)
-                                        .foregroundStyle(Color.brand)
+                                        .font(.plexArabic(13.5, weight: .medium))
+                                        .foregroundStyle(Color.mAccentStrong)
                                     }
+                                    .listRowBackground(Color.mSurface)
                                 } header: {
-                                    CategorySectionHeader(category: category)
+                                    CategorySectionHeader(category: category, onDelete: {
+                                        Task { await store.deleteCategory(category.id) }
+                                    })
                                 }
                             }
                         }
                         .listStyle(.insetGrouped)
+                        .scrollContentBackground(.hidden)
+                        .background(Color.mBackground)
                     } else {
-                        ContentUnavailableView(
-                            store.language == .arabic ? "لا توجد مطاعم" : "No Restaurants",
-                            systemImage: "fork.knife",
-                            description: Text(store.language == .arabic
-                                ? "أضف مطعمك الأول من خلال الإعدادات"
-                                : "Add your first restaurant in settings")
-                        )
+                        VStack(spacing: 16) {
+                            ContentUnavailableView(
+                                store.language == .arabic ? "لا توجد مطاعم" : "No Restaurants",
+                                systemImage: "fork.knife",
+                                description: Text(store.language == .arabic
+                                    ? "أنشئي مطعمك الأول لتبدئي إضافة منيوك"
+                                    : "Create your first restaurant to start building your menu")
+                            )
+                            Button {
+                                showCreateRestaurant = true
+                            } label: {
+                                Text(store.language == .arabic ? "إنشاء مطعم" : "Create Restaurant")
+                                    .font(.plexArabic(14.5, weight: .semibold))
+                                    .padding(.horizontal, 22).padding(.vertical, 11)
+                                    .background(Color.mAccent)
+                                    .foregroundStyle(Color.mAccentInk)
+                                    .clipShape(Capsule())
+                            }
+                        }
                     }
                 }
                 .navigationTitle(store.language == .arabic ? "لوحة التحكم" : "Dashboard")
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {
-                        Button { showAddCategory = true } label: {
+                        Menu {
+                            Button {
+                                showAddCategory = true
+                            } label: {
+                                Label(store.language == .arabic ? "تصنيف جديد" : "New Category", systemImage: "square.grid.2x2")
+                            }
+                            .disabled(selectedRestaurant == nil)
+
+                            Button {
+                                showCreateRestaurant = true
+                            } label: {
+                                Label(store.language == .arabic ? "مطعم جديد" : "New Restaurant", systemImage: "storefront")
+                            }
+                        } label: {
                             Image(systemName: "plus")
                         }
-                        .disabled(selectedRestaurant == nil)
                     }
                     ToolbarItem(placement: .topBarLeading) {
                         Button {
                             Task { await store.signOut() }
                         } label: {
                             Text(store.language == .arabic ? "خروج" : "Sign Out")
-                                .foregroundStyle(.red)
-                                .font(.subheadline)
+                                .foregroundStyle(Color.mBad)
+                                .font(.plexArabic(13.5))
                         }
                     }
                 }
@@ -100,6 +138,11 @@ struct OwnerDashboardView: View {
                         AddItemSheet(restaurantID: restaurant.id, category: category)
                     }
                 }
+                .sheet(isPresented: $showCreateRestaurant) {
+                    CreateRestaurantSheet(onCreated: { newID in
+                        selectedRestaurantID = newID
+                    })
+                }
             }
         }
     }
@@ -112,12 +155,14 @@ struct OwnerDashboardView: View {
                         selectedRestaurantID = restaurant.id
                     } label: {
                         Text(restaurant.displayName(store.language))
-                            .font(.subheadline)
-                            .fontWeight(selectedRestaurantID == restaurant.id ? .semibold : .regular)
+                            .font(.plexArabic(13, weight: selectedRestaurantID == restaurant.id ? .semibold : .regular))
                             .padding(.horizontal, 14).padding(.vertical, 7)
-                            .background(selectedRestaurantID == restaurant.id ? Color.brand : Color(.secondarySystemBackground))
-                            .foregroundStyle(selectedRestaurantID == restaurant.id ? .white : .primary)
+                            .background(selectedRestaurantID == restaurant.id ? Color.mInk : Color.mSurface)
+                            .foregroundStyle(selectedRestaurantID == restaurant.id ? Color.mBackground : Color.mInkSoft)
                             .clipShape(Capsule())
+                            .overlay(
+                                Capsule().strokeBorder(selectedRestaurantID == restaurant.id ? Color.clear : Color.mLine, lineWidth: 1)
+                            )
                     }
                 }
             }
@@ -132,26 +177,112 @@ struct OwnerDashboardView: View {
 private struct CategorySectionHeader: View {
     @Environment(AppStore.self) private var store
     let category: MenuCategory
+    var onDelete: () -> Void
+    @State private var confirmDelete = false
 
     var body: some View {
         HStack {
             Text(category.letter)
-                .font(.system(.caption, design: .monospaced, weight: .black))
+                .font(.plexMono(11, weight: .bold))
                 .foregroundStyle(.white)
                 .frame(width: 22, height: 22)
-                .background(Color.brand)
+                .background(Color.mAccent)
                 .clipShape(RoundedRectangle(cornerRadius: 5))
+                .environment(\.layoutDirection, .leftToRight)
 
             Text(category.displayName(store.language))
-                .font(.subheadline).fontWeight(.semibold)
-                .foregroundStyle(.primary)
+                .font(.plexArabic(13.5, weight: .semibold))
+                .foregroundStyle(Color.mInk)
 
             Spacer()
 
             Text("\(category.items.count) \(store.language == .arabic ? "منتج" : "items")")
-                .font(.caption).foregroundStyle(.secondary)
+                .font(.plexArabic(11.5))
+                .foregroundStyle(Color.mInkSoft)
+
+            Button {
+                confirmDelete = true
+            } label: {
+                Image(systemName: "trash")
+                    .font(.system(size: 12))
+                    .foregroundStyle(Color.mInkFaint)
+            }
+            .confirmationDialog(
+                store.language == .arabic
+                    ? "حذف هذا التصنيف يحذف كل منتجاته ورموزها نهائيًا."
+                    : "Deleting this category permanently removes all its items and codes.",
+                isPresented: $confirmDelete,
+                titleVisibility: .visible
+            ) {
+                Button(store.language == .arabic ? "حذف التصنيف" : "Delete Category", role: .destructive, action: onDelete)
+            }
         }
         .textCase(nil)
+    }
+}
+
+// MARK: - Create Restaurant Sheet
+
+private struct CreateRestaurantSheet: View {
+    @Environment(AppStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    var onCreated: (UUID) -> Void
+
+    @State private var nameAr = ""
+    @State private var nameEn = ""
+    @State private var type: RestaurantType = .restaurant
+    @State private var descriptionAr = ""
+    @State private var isSaving = false
+
+    private var isArabic: Bool { store.language == .arabic }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section(isArabic ? "اسم المطعم" : "Restaurant Name") {
+                    TextField(isArabic ? "الاسم بالعربي" : "Arabic name", text: $nameAr)
+                    TextField(isArabic ? "الاسم بالإنجليزي" : "English name", text: $nameEn)
+                }
+
+                Section(isArabic ? "النوع" : "Type") {
+                    Picker(isArabic ? "النوع" : "Type", selection: $type) {
+                        ForEach(RestaurantType.allCases, id: \.self) { t in
+                            Text(t.label(store.language)).tag(t)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                }
+
+                Section(isArabic ? "وصف قصير (اختياري)" : "Short description (optional)") {
+                    TextField(isArabic ? "سطر واحد يعرّف بمطعمك" : "One line about your place", text: $descriptionAr, axis: .vertical)
+                }
+            }
+            .navigationTitle(isArabic ? "مطعم جديد" : "New Restaurant")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button(isArabic ? "إلغاء" : "Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(isArabic ? "إنشاء" : "Create") {
+                        isSaving = true
+                        Task {
+                            let finalNameEn = nameEn.isEmpty ? nameAr : nameEn
+                            let finalNameAr = nameAr.isEmpty ? nameEn : nameAr
+                            if let id = await store.createRestaurant(
+                                nameEn: finalNameEn, nameAr: finalNameAr, type: type,
+                                descriptionEn: descriptionAr, descriptionAr: descriptionAr
+                            ) {
+                                onCreated(id)
+                            }
+                            dismiss()
+                        }
+                    }
+                    .fontWeight(.semibold)
+                    .disabled((nameAr.isEmpty && nameEn.isEmpty) || isSaving)
+                }
+            }
+        }
     }
 }
 
@@ -166,26 +297,24 @@ private struct OwnerItemRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Text(item.code)
-                .font(.system(.callout, design: .monospaced, weight: .black))
-                .foregroundStyle(item.isAvailable ? Color.brand : Color(.systemGray3))
-                .frame(width: 44, height: 44)
-                .background(item.isAvailable ? Color.brandLight : Color(.systemGray6))
-                .clipShape(RoundedRectangle(cornerRadius: 10))
+            CodeChip(code: item.code)
+                .opacity(item.isAvailable ? 1 : 0.5)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.displayName(store.language))
-                    .font(.subheadline).fontWeight(.medium)
+                    .font(.plexArabic(14, weight: .medium))
+                    .foregroundStyle(Color.mInk)
 
                 Button {
                     showEditPrice = true
                 } label: {
                     HStack(spacing: 3) {
                         Text(priceText(item.price))
-                            .font(.caption).fontWeight(.semibold)
-                            .foregroundStyle(Color.brand)
+                            .font(.plexMono(12, weight: .semibold))
+                            .foregroundStyle(Color.mInk)
+                            .environment(\.layoutDirection, .leftToRight)
                         Image(systemName: "pencil")
-                            .font(.system(size: 9)).foregroundStyle(.secondary)
+                            .font(.system(size: 9)).foregroundStyle(Color.mInkSoft)
                     }
                 }
                 .buttonStyle(.plain)
@@ -247,9 +376,7 @@ private struct AddCategorySheet: View {
                     HStack {
                         Text(store.language == .arabic ? "حرف التصنيف" : "Category letter")
                         Spacer()
-                        Text(nextLetter)
-                            .font(.system(.title3, design: .monospaced, weight: .black))
-                            .foregroundStyle(Color.brand)
+                        CodeChip(code: nextLetter)
                     }
                 }
             }
@@ -317,9 +444,7 @@ private struct AddItemSheet: View {
                     HStack {
                         Text(store.language == .arabic ? "رمز المنتج الجديد" : "New item code")
                         Spacer()
-                        Text(nextCode)
-                            .font(.system(.title3, design: .monospaced, weight: .black))
-                            .foregroundStyle(Color.brand)
+                        CodeChip(code: nextCode)
                     }
                 }
             }
@@ -367,11 +492,9 @@ private struct EditPriceSheet: View {
             Form {
                 Section {
                     HStack(spacing: 8) {
-                        Text(item.code)
-                            .font(.system(.headline, design: .monospaced, weight: .black))
-                            .foregroundStyle(Color.brand)
+                        CodeChip(code: item.code)
                         Text(item.displayName(store.language))
-                            .fontWeight(.medium)
+                            .font(.plexArabic(14, weight: .medium))
                     }
                 }
 
@@ -431,22 +554,22 @@ private struct VendorSignInView: View {
                 VStack(spacing: 14) {
                     ZStack {
                         Circle()
-                            .fill(Color.brandLight)
+                            .fill(Color.mAccentSoft)
                             .frame(width: 88, height: 88)
                         Image(systemName: "square.grid.2x2.fill")
                             .font(.system(size: 34))
-                            .foregroundStyle(Color.brand)
+                            .foregroundStyle(Color.mAccentStrong)
                     }
-                    .shadow(color: Color.brand.opacity(0.15), radius: 12, x: 0, y: 6)
 
                     Text(isArabic ? "لوحة تحكم صاحب المطعم" : "Vendor Dashboard")
-                        .font(.title2).fontWeight(.bold)
+                        .font(.plexArabic(19, weight: .bold))
+                        .foregroundStyle(Color.mInk)
 
                     Text(isArabic
                          ? "سجّل دخولك لإدارة منيوك"
                          : "Sign in to manage your menu")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .font(.plexArabic(13.5))
+                        .foregroundStyle(Color.mInkSoft)
                         .multilineTextAlignment(.center)
                 }
 
@@ -456,21 +579,29 @@ private struct VendorSignInView: View {
                         .keyboardType(.emailAddress)
                         .autocorrectionDisabled()
                         .textInputAutocapitalization(.never)
+                        .font(.plexArabic(14))
                         .padding(14)
-                        .background(Color(.secondarySystemBackground))
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .background(Color.mSurface)
+                        .clipShape(RoundedRectangle(cornerRadius: MTheme.radiusSmall))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: MTheme.radiusSmall).strokeBorder(Color.mLine, lineWidth: 1)
+                        )
 
                     SecureField(isArabic ? "كلمة المرور" : "Password", text: $password)
+                        .font(.plexArabic(14))
                         .padding(14)
-                        .background(Color(.secondarySystemBackground))
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .background(Color.mSurface)
+                        .clipShape(RoundedRectangle(cornerRadius: MTheme.radiusSmall))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: MTheme.radiusSmall).strokeBorder(Color.mLine, lineWidth: 1)
+                        )
                 }
 
                 // Error
                 if let errorText {
                     Text(errorText)
-                        .font(.caption)
-                        .foregroundStyle(.red)
+                        .font(.plexArabic(12))
+                        .foregroundStyle(Color.mBad)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 8)
                 }
@@ -499,13 +630,13 @@ private struct VendorSignInView: View {
                         Text(isSignUp
                              ? (isArabic ? "إنشاء حساب" : "Create Account")
                              : (isArabic ? "تسجيل الدخول" : "Sign In"))
-                            .fontWeight(.semibold)
+                            .font(.plexArabic(14.5, weight: .semibold))
                     }
                     .frame(maxWidth: .infinity)
                     .padding(15)
                     .background(email.isEmpty || password.isEmpty || isLoading
-                                ? Color.brand.opacity(0.4) : Color.brand)
-                    .foregroundStyle(.white)
+                                ? Color.mAccent.opacity(0.4) : Color.mAccent)
+                    .foregroundStyle(Color.mAccentInk)
                     .clipShape(RoundedRectangle(cornerRadius: 14))
                 }
                 .disabled(email.isEmpty || password.isEmpty || isLoading)
@@ -518,8 +649,8 @@ private struct VendorSignInView: View {
                     Text(isSignUp
                          ? (isArabic ? "لديك حساب؟ سجّل الدخول" : "Already have an account? Sign In")
                          : (isArabic ? "لا حساب لديك؟ أنشئ حسابًا" : "No account? Create one"))
-                        .font(.subheadline)
-                        .foregroundStyle(Color.brand)
+                        .font(.plexArabic(13.5))
+                        .foregroundStyle(Color.mAccentStrong)
                 }
 
                 Spacer().frame(height: 20)

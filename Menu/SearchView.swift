@@ -26,10 +26,14 @@ struct SearchView: View {
                         NavigationLink(destination: RestaurantMenuView(restaurant: result.restaurant)) {
                             SearchResultRow(restaurant: result.restaurant, item: result.item)
                         }
+                        .listRowBackground(Color.mSurface)
                     }
                     .listStyle(.plain)
+                    .scrollContentBackground(.hidden)
+                    .background(Color.mBackground)
                 }
             }
+            .background(Color.mBackground)
             .searchable(
                 text: $query,
                 prompt: store.language == .arabic ? "اسم أو رمز مثل B02..." : "Name or code like B02..."
@@ -46,25 +50,23 @@ private struct SearchResultRow: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            Text(item.code)
-                .font(.system(.callout, design: .monospaced, weight: .black))
-                .foregroundStyle(.white)
-                .padding(.horizontal, 8).padding(.vertical, 5)
-                .background(Color.brand)
-                .clipShape(RoundedRectangle(cornerRadius: 7))
+            CodeChip(code: item.code)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.displayName(store.language))
-                    .font(.subheadline).fontWeight(.medium)
+                    .font(.plexArabic(14, weight: .medium))
+                    .foregroundStyle(Color.mInk)
                 Text(restaurant.displayName(store.language))
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.plexArabic(12))
+                    .foregroundStyle(Color.mInkSoft)
             }
 
             Spacer()
 
             Text(priceText(item.price))
-                .font(.footnote).fontWeight(.semibold)
-                .foregroundStyle(Color.brand)
+                .font(.plexMono(13.5, weight: .semibold))
+                .foregroundStyle(Color.mInk)
+                .environment(\.layoutDirection, .leftToRight)
         }
     }
 

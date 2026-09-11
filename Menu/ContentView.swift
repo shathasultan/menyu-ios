@@ -27,7 +27,9 @@ struct ContentView: View {
         }
         .environment(store)
         .environment(\.layoutDirection, store.language == .arabic ? .rightToLeft : .leftToRight)
-        .tint(Color.brand)
+        .tint(Color.mAccent)
+        .preferredColorScheme(.light)
+        .background(Color.mBackground)
     }
 }
 

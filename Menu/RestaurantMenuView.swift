@@ -21,13 +21,14 @@ struct RestaurantMenuView: View {
                 Spacer().frame(height: 20)
             }
         }
-        .background(Color(.systemGroupedBackground))
+        .background(Color.mBackground)
         .navigationTitle(liveRestaurant.displayName(store.language))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 ShareLink(item: "\(liveRestaurant.displayName(store.language)) · منيو") {
                     Image(systemName: "square.and.arrow.up")
+                        .foregroundStyle(Color.mAccentStrong)
                 }
             }
         }
@@ -42,17 +43,17 @@ private struct RestaurantHeader: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Teal gradient hero
+            // Warm accent hero
             ZStack {
                 LinearGradient(
-                    colors: [Color.brand, Color(red: 3/255, green: 105/255, blue: 97/255)],
+                    colors: [Color.mAccent, Color.mAccentStrong],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )
 
                 // Decorative circles for depth
-                Circle().fill(.white.opacity(0.06)).frame(width: 180).offset(x: 90, y: -15)
-                Circle().fill(.white.opacity(0.04)).frame(width: 110).offset(x: -70, y: 40)
+                Circle().fill(.white.opacity(0.10)).frame(width: 180).offset(x: 90, y: -15)
+                Circle().fill(.white.opacity(0.07)).frame(width: 110).offset(x: -70, y: 40)
 
                 VStack(spacing: 12) {
                     Image(systemName: restaurant.type.icon)
@@ -63,7 +64,7 @@ private struct RestaurantHeader: View {
                     HStack(spacing: 4) {
                         Image(systemName: restaurant.type.icon).font(.caption2)
                         Text(restaurant.type.label(store.language))
-                            .font(.caption).fontWeight(.semibold)
+                            .font(.plexArabic(12, weight: .semibold))
                     }
                     .padding(.horizontal, 12).padding(.vertical, 5)
                     .background(.white.opacity(0.18))
@@ -73,18 +74,20 @@ private struct RestaurantHeader: View {
             }
             .frame(height: 165)
 
-            // Restaurant info card (white)
+            // Restaurant info card
             VStack(spacing: 6) {
                 Text(restaurant.displayName(store.language))
-                    .font(.title2).fontWeight(.bold)
+                    .font(.plexArabic(19, weight: .bold))
+                    .foregroundStyle(Color.mInk)
                 Text(restaurant.displayDescription(store.language))
-                    .font(.subheadline).foregroundStyle(.secondary)
+                    .font(.plexArabic(13.5))
+                    .foregroundStyle(Color.mInkSoft)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 24)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 18)
-            .background(Color(.systemBackground))
+            .background(Color.mSurface)
         }
     }
 }
@@ -100,29 +103,32 @@ private struct CategorySection: View {
             // Category header bar
             HStack(spacing: 10) {
                 Text(category.letter)
-                    .font(.system(.subheadline, design: .monospaced, weight: .black))
+                    .font(.plexMono(14, weight: .bold))
                     .foregroundStyle(.white)
                     .frame(width: 32, height: 32)
-                    .background(Color.brand)
+                    .background(Color.mAccent)
                     .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .environment(\.layoutDirection, .leftToRight)
 
                 Text(category.displayName(store.language))
-                    .font(.headline)
+                    .font(.plexArabic(15, weight: .bold))
+                    .foregroundStyle(Color.mInk)
 
                 Spacer()
 
                 Text("\(category.items.count)")
-                    .font(.caption2).fontWeight(.medium)
+                    .font(.plexMono(11, weight: .medium))
                     .padding(.horizontal, 8).padding(.vertical, 3)
-                    .background(Color(.systemGray6))
-                    .foregroundStyle(.secondary)
+                    .background(Color.mSurface2)
+                    .foregroundStyle(Color.mInkSoft)
                     .clipShape(Capsule())
+                    .environment(\.layoutDirection, .leftToRight)
             }
             .padding(.horizontal)
             .padding(.vertical, 14)
-            .background(Color(.systemGroupedBackground))
+            .background(Color.mBackground)
 
-            // Item rows on white background
+            // Item rows
             VStack(spacing: 0) {
                 ForEach(Array(category.items.enumerated()), id: \.element.id) { index, item in
                     MenuItemRow(item: item)
@@ -131,7 +137,7 @@ private struct CategorySection: View {
                     }
                 }
             }
-            .background(Color(.systemBackground))
+            .background(Color.mSurface)
         }
     }
 }
@@ -144,31 +150,27 @@ private struct MenuItemRow: View {
 
     var body: some View {
         HStack(spacing: 14) {
-            // Code badge — prominent, teal with glow shadow
-            Text(item.code)
-                .font(.system(.callout, design: .monospaced, weight: .black))
-                .foregroundStyle(item.isAvailable ? .white : Color(.systemGray3))
-                .frame(width: 50, height: 50)
-                .background(item.isAvailable ? Color.brand : Color(.systemGray5))
-                .clipShape(RoundedRectangle(cornerRadius: 13))
-                .shadow(
-                    color: item.isAvailable ? Color.brand.opacity(0.28) : .clear,
-                    radius: 7, x: 0, y: 3
-                )
+            CodeChip(code: item.code, large: false)
+                .opacity(item.isAvailable ? 1 : 0.5)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(item.displayName(store.language))
-                    .font(.subheadline).fontWeight(.medium)
-                    .strikethrough(!item.isAvailable, color: .secondary)
-                    .foregroundStyle(item.isAvailable ? .primary : .secondary)
+                    .font(.plexArabic(14, weight: .medium))
+                    .strikethrough(!item.isAvailable, color: Color.mInkFaint)
+                    .foregroundStyle(item.isAvailable ? Color.mInk : Color.mInkFaint)
 
                 if item.isAvailable {
                     Text(priceText(item.price))
-                        .font(.footnote).fontWeight(.semibold)
-                        .foregroundStyle(Color.brand)
+                        .font(.plexMono(13, weight: .semibold))
+                        .foregroundStyle(Color.mInk)
+                        .environment(\.layoutDirection, .leftToRight)
                 } else {
                     Text(store.language == .arabic ? "غير متوفر" : "Unavailable")
-                        .font(.caption).foregroundStyle(.secondary)
+                        .font(.plexArabic(11, weight: .bold))
+                        .foregroundStyle(Color.mBad)
+                        .padding(.horizontal, 7).padding(.vertical, 2)
+                        .background(Color.mBadSoft)
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
                 }
             }
 
@@ -178,8 +180,15 @@ private struct MenuItemRow: View {
                 store.toggleFavorite(item)
             } label: {
                 Image(systemName: store.isFavorite(item) ? "heart.fill" : "heart")
-                    .font(.system(size: 19))
-                    .foregroundStyle(store.isFavorite(item) ? .red : Color(.systemGray3))
+                    .font(.system(size: 17))
+                    .foregroundStyle(store.isFavorite(item) ? Color.mBad : Color.mInkSoft)
+                    .frame(width: 30, height: 30)
+                    .background(store.isFavorite(item) ? Color.mBadSoft : Color.mSurface2)
+                    .clipShape(RoundedRectangle(cornerRadius: 9))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 9)
+                            .strokeBorder(store.isFavorite(item) ? Color.mBadSoft : Color.mLine, lineWidth: 1)
+                    )
             }
             .buttonStyle(.plain)
         }
