@@ -15,6 +15,21 @@ struct OwnerDashboardView: View {
         NavigationStack {
                 VStack(spacing: 0) {
                     restaurantPicker
+
+                    if let restaurant = selectedRestaurant, !restaurant.isPublished {
+                        HStack(spacing: 8) {
+                            Image(systemName: "clock.fill")
+                            Text(store.language == .arabic
+                                 ? "قيد المراجعة — لن يظهر للعملاء حتى يُعتمد"
+                                 : "Under review — hidden from customers until approved")
+                        }
+                        .font(.plexArabic(12, weight: .semibold))
+                        .foregroundStyle(Color.mAccentStrong)
+                        .padding(.horizontal, 14).padding(.vertical, 8)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color.mAccentSoft)
+                    }
+
                     Divider()
 
                     if store.isLoading && store.myRestaurants.isEmpty {

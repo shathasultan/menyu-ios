@@ -56,11 +56,13 @@ struct MenuCategory: Identifiable {
 
 struct Restaurant: Identifiable {
     let id: UUID
+    var ownerID: UUID
     var name: String
     var nameAr: String
     var type: RestaurantType
     var descriptionEn: String
     var descriptionAr: String
+    var isPublished: Bool
     var categories: [MenuCategory]
 
     func displayName(_ language: Language) -> String {

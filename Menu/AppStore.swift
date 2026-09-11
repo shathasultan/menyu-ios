@@ -16,8 +16,14 @@ final class AppStore {
     var errorMessage: String? = nil
     var currentUserID: UUID? = nil
     var currentUserEmail: String? = nil
+    var pendingRestaurants: [Restaurant] = []
 
     var isAuthenticated: Bool { currentUserID != nil }
+
+    /// Single hardcoded reviewer for now — there is exactly one person operating this app.
+    /// Move to a real roles table if a second admin is ever needed.
+    private static let adminEmail = "shathasultann9@gmail.com"
+    var isAdmin: Bool { currentUserEmail == Self.adminEmail }
 
     private static let favoritesDefaultsKey = "menu.favoriteItemIDs.v1"
 
@@ -84,6 +90,7 @@ final class AppStore {
             struct InsertRestaurant: Encodable {
                 let ownerID: UUID
                 let name, nameAr, type, descriptionEn, descriptionAr: String
+                let isPublished: Bool
                 enum CodingKeys: String, CodingKey {
                     case ownerID = "owner_id"
                     case name
@@ -91,6 +98,7 @@ final class AppStore {
                     case type
                     case descriptionEn = "description_en"
                     case descriptionAr = "description_ar"
+                    case isPublished = "is_published"
                 }
             }
             struct InsertedID: Decodable { let id: UUID }
@@ -100,7 +108,8 @@ final class AppStore {
                 .insert(InsertRestaurant(
                     ownerID: uid,
                     name: nameEn, nameAr: nameAr, type: type.rawValue,
-                    descriptionEn: descriptionEn, descriptionAr: descriptionAr
+                    descriptionEn: descriptionEn, descriptionAr: descriptionAr,
+                    isPublished: false
                 ))
                 .select("id")
                 .single()
@@ -130,6 +139,43 @@ final class AppStore {
         do {
             try await supabase.from("menu_items").delete().eq("id", value: itemID.uuidString).execute()
             await loadMyRestaurants()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    // MARK: - Admin: Review new restaurants before they go live
+
+    func loadPendingRestaurants() async {
+        guard isAdmin else { return }
+        do {
+            let rows: [RestaurantRow] = try await supabase
+                .from("restaurants")
+                .select("*, menu_categories(*, menu_items(*))")
+                .eq("is_published", value: false)
+                .order("created_at")
+                .execute()
+                .value
+            pendingRestaurants = rows.map { $0.toRestaurant() }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func approveRestaurant(_ restaurantID: UUID) async {
+        guard isAdmin else { return }
+        do {
+            struct Publish: Encodable {
+                let isPublished: Bool
+                enum CodingKeys: String, CodingKey { case isPublished = "is_published" }
+            }
+            try await supabase
+                .from("restaurants")
+                .update(Publish(isPublished: true))
+                .eq("id", value: restaurantID.uuidString)
+                .execute()
+            await loadPendingRestaurants()
+            await loadRestaurants()
         } catch {
             errorMessage = error.localizedDescription
         }

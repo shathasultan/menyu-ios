@@ -5,20 +5,24 @@ import Foundation
 
 struct RestaurantRow: Codable {
     let id: UUID
+    let ownerID: UUID
     let name: String
     let nameAr: String
     let type: String
     let descriptionEn: String
     let descriptionAr: String
     let nextCategoryIndex: Int
+    let isPublished: Bool
     let menuCategories: [MenuCategoryRow]?
 
     enum CodingKeys: String, CodingKey {
         case id, name, type
+        case ownerID = "owner_id"
         case nameAr = "name_ar"
         case descriptionEn = "description_en"
         case descriptionAr = "description_ar"
         case nextCategoryIndex = "next_category_index"
+        case isPublished = "is_published"
         case menuCategories = "menu_categories"
     }
 
@@ -28,11 +32,13 @@ struct RestaurantRow: Codable {
             .map { $0.toMenuCategory() }
         return Restaurant(
             id: id,
+            ownerID: ownerID,
             name: name,
             nameAr: nameAr,
             type: RestaurantType(rawValue: type) ?? .restaurant,
             descriptionEn: descriptionEn,
             descriptionAr: descriptionAr,
+            isPublished: isPublished,
             categories: cats
         )
     }
