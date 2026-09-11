@@ -1,9 +1,8 @@
 import SwiftUI
 
-/// Shown for ~3s on every cold launch. Solid brand-orange background, the
-/// layered-card logo mark settling into place, then "Menu" typed out in English
-/// beneath it — matches the owner's explicit spec for this screen (distinct from
-/// the cream-background Splash.dc.html mockup in the identity board).
+/// Shown for ~3s on every cold launch. Midnight-gradient background ("ليل
+/// وزعفران" identity), the layered-card logo mark settling into place, then
+/// "Menu" typed out in English beneath it.
 struct SplashScreenView: View {
     private let fullText = "Menu"
 
@@ -13,7 +12,7 @@ struct SplashScreenView: View {
     var body: some View {
         ZStack {
             LinearGradient(
-                colors: [Color.mAccent, Color.mAccentStrong],
+                colors: [Color.mAccent, Color.mAccentDeep],
                 startPoint: .topLeading, endPoint: .bottomTrailing
             )
             .ignoresSafeArea()

@@ -1,7 +1,7 @@
 import SwiftUI
 import CoreText
 
-// MARK: - Brand palette (light mode only — matches the "منيو" web prototype 1:1)
+// MARK: - Brand palette ("ليل وزعفران" — Midnight & Saffron, light mode only)
 
 extension Color {
     static let mBackground   = Color(hex: 0xF7EEDD)
@@ -10,20 +10,23 @@ extension Color {
     static let mInk          = Color(hex: 0x241A10)
     static let mInkSoft      = Color(hex: 0x6E5C42)
     static let mInkFaint     = Color(hex: 0x9C8B6E)
-    static let mAccent       = Color(hex: 0xD97730)
-    static let mAccentStrong = Color(hex: 0xB85D1D)
-    static let mAccentInk    = Color(hex: 0xFFFFFF)
-    static let mAccentSoft   = Color(hex: 0xF6E2CC)
+    /// Midnight — primary brand color: solid buttons, active tab, code chips.
+    static let mAccent       = Color(hex: 0x173539)
+    /// A deeper midnight, used only for the two hero/splash gradients (keeps
+    /// white overlay text legible — a straight midnight-to-saffron gradient
+    /// would wash out near the gold end).
+    static let mAccentDeep   = Color(hex: 0x0E2427)
+    /// Deep amber-gold — text/icons on a light `mAccentSoft` badge.
+    static let mAccentStrong = Color(hex: 0x96650D)
+    /// Saffron — text/icons on a solid `mAccent` (midnight) surface.
+    static let mAccentInk    = Color(hex: 0xF0A93A)
+    static let mAccentSoft   = Color(hex: 0xFBE7C4)
     static let mGood         = Color(hex: 0x2E8B57)
     static let mGoodSoft     = Color(hex: 0xE4F1E9)
     static let mGoodInk      = Color(hex: 0x1E5E3B)
     static let mBad          = Color(hex: 0xB4432E)
     static let mBadSoft      = Color(hex: 0xF6E2DC)
     static let mLine         = Color(hex: 0xE4D3AE)
-
-    // Deprecated aliases kept temporarily during the identity migration — remove once all call sites move to the m* tokens.
-    static let brand      = mAccent
-    static let brandLight = mAccentSoft
 
     init(hex: UInt32) {
         self.init(
@@ -90,11 +93,11 @@ struct CodeChip: View {
     var body: some View {
         Text(code)
             .font(.plexMono(large ? 20 : 13.5, weight: .bold))
-            .foregroundStyle(Color.mAccentStrong)
+            .foregroundStyle(Color.mAccentInk)
             .padding(.horizontal, large ? 14 : 9)
             .padding(.vertical, large ? 8 : 5)
             .frame(minWidth: large ? 64 : 40)
-            .background(Color.mAccentSoft)
+            .background(Color.mAccent)
             .clipShape(RoundedRectangle(cornerRadius: large ? 10 : 8, style: .continuous))
             .environment(\.layoutDirection, .leftToRight)
     }

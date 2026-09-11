@@ -46,7 +46,7 @@ private struct RestaurantHeader: View {
             // Warm accent hero
             ZStack {
                 LinearGradient(
-                    colors: [Color.mAccent, Color.mAccentStrong],
+                    colors: [Color.mAccent, Color.mAccentDeep],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )
