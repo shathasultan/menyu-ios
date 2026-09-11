@@ -10,3 +10,6 @@ DerivedData/
 
 # Secrets — never commit real values
 Menu/Secrets.swift
+
+# Supabase CLI local cache (machine-specific, not secret but not useful to track)
+supabase/.temp/
