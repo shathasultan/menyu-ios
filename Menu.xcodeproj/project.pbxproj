@@ -10,15 +10,37 @@
 		C08E5F823053069200F0D369 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = C08E5F813053069200F0D369 /* Supabase */; };
 		C090B79E3054940700C24065 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 3DC4246C531A4EE19FCEE7CC /* GoogleSignIn */; };
 		C090B79F3054940700C24065 /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 0FFF6D63FFACFB2568A0EE26 /* GoogleSignInSwift */; };
+		F59B726CD8503651DFB5F78D /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0C04E8E83337E6A4A170B69B /* Foundation.framework */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		4CBF6FDE3092A08007413854 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C0A5D57B3051D73200D334FB /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = C0A5D5823051D73200D334FB;
+			remoteInfo = Menu;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
+		0C04E8E83337E6A4A170B69B /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
+		24305EB902F33EAC9414EFAE /* MenuTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MenuTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		C0A5D5833051D73200D334FB /* Menu.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Menu.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		B85AA4344FCEAFF4BD21AA9C /* MenuTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
+			path = MenuTests;
+			sourceTree = "<group>";
+		};
 		C0A5D5853051D73200D334FB /* Menu */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
 			path = Menu;
 			sourceTree = "<group>";
 		};
@@ -35,12 +57,29 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		E221D4F04971908E108B6D26 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F59B726CD8503651DFB5F78D /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		0FFD6C468C4CB86A5063CD92 /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				0C04E8E83337E6A4A170B69B /* Foundation.framework */,
+			);
+			name = iOS;
+			sourceTree = "<group>";
+		};
 		C08E5F803053069200F0D369 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				0FFD6C468C4CB86A5063CD92 /* iOS */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -51,6 +90,7 @@
 				C0A5D5853051D73200D334FB /* Menu */,
 				C08E5F803053069200F0D369 /* Frameworks */,
 				C0A5D5843051D73200D334FB /* Products */,
+				B85AA4344FCEAFF4BD21AA9C /* MenuTests */,
 			);
 			sourceTree = "<group>";
 			usesTabs = 0;
@@ -59,6 +99,7 @@
 			isa = PBXGroup;
 			children = (
 				C0A5D5833051D73200D334FB /* Menu.app */,
+				24305EB902F33EAC9414EFAE /* MenuTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -66,6 +107,27 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		9AE5254EF0FC91FCDA135199 /* MenuTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 439E50C3492FC79DB26B6F39 /* Build configuration list for PBXNativeTarget "MenuTests" */;
+			buildPhases = (
+				2C91500ECC335B068AF9374B /* Sources */,
+				E221D4F04971908E108B6D26 /* Frameworks */,
+				D42B10DE26F9DA4A20424F32 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				BF39630E00416D83BF8F4C3C /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				B85AA4344FCEAFF4BD21AA9C /* MenuTests */,
+			);
+			name = MenuTests;
+			productName = MenuTests;
+			productReference = 24305EB902F33EAC9414EFAE /* MenuTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		C0A5D5823051D73200D334FB /* Menu */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = C0A5D58E3051D73300D334FB /* Build configuration list for PBXNativeTarget "Menu" */;
@@ -125,6 +187,7 @@
 			projectRoot = "";
 			targets = (
 				C0A5D5823051D73200D334FB /* Menu */,
+				9AE5254EF0FC91FCDA135199 /* MenuTests */,
 			);
 		};
 /* End PBXProject section */
@@ -137,9 +200,23 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		D42B10DE26F9DA4A20424F32 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		2C91500ECC335B068AF9374B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		C0A5D57F3051D73200D334FB /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -149,7 +226,34 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		BF39630E00416D83BF8F4C3C /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = Menu;
+			target = C0A5D5823051D73200D334FB /* Menu */;
+			targetProxy = 4CBF6FDE3092A08007413854 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		B2A0BA43994B937273D106B9 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = NGY34GZ6UN;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				PRODUCT_BUNDLE_IDENTIFIER = sa.bithrah.menu.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Menu.app/Menu";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
 		C0A5D58C3051D73300D334FB /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -337,9 +441,35 @@
 			};
 			name = Release;
 		};
+		DBBEA4E328646DEB73C41C9B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = NGY34GZ6UN;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				PRODUCT_BUNDLE_IDENTIFIER = sa.bithrah.menu.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Menu.app/Menu";
+			};
+			name = Debug;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		439E50C3492FC79DB26B6F39 /* Build configuration list for PBXNativeTarget "MenuTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B2A0BA43994B937273D106B9 /* Release */,
+				DBBEA4E328646DEB73C41C9B /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		C0A5D57E3051D73200D334FB /* Build configuration list for PBXProject "Menu" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
