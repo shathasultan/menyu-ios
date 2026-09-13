@@ -1,5 +1,4 @@
 import SwiftUI
-import AuthenticationServices
 
 /// The tab customers see. Shown instead of the vendor dashboard for anyone who
 /// isn't signed in, or who is signed in but doesn't own a restaurant yet — the
@@ -393,31 +392,13 @@ struct AccountSignInView: View {
                 }
                 .disabled(isLoading)
 
-                // Sign in with Apple
-                SignInWithAppleButton(.signIn, onRequest: { request in
-                    request.requestedScopes = [.email, .fullName]
-                    request.nonce = store.makeAppleNonce()
-                }, onCompletion: { result in
-                    switch result {
-                    case .success(let authorization):
-                        Task {
-                            isLoading = true
-                            errorText = nil
-                            do {
-                                try await store.signInWithApple(authorization: authorization)
-                            } catch {
-                                errorText = error.localizedDescription
-                            }
-                            isLoading = false
-                        }
-                    case .failure(let error):
-                        errorText = error.localizedDescription
-                    }
-                })
-                .signInWithAppleButtonStyle(.black)
-                .frame(height: 50)
-                .clipShape(RoundedRectangle(cornerRadius: 14))
-                .disabled(isLoading)
+                // Sign in with Apple: temporarily hidden — needs a paid Apple Developer
+                // Program membership to provision the "Sign In with Apple" capability at
+                // all (a Personal Team can't, and having the entitlement declared with no
+                // valid profile breaks signing for every build, not just this feature).
+                // AppStore.signInWithApple/makeAppleNonce are untouched; re-add this button
+                // (see git history) once the account is upgraded and the entitlement/
+                // capability are restored.
 
                 Spacer().frame(height: 20)
             }
