@@ -2,6 +2,8 @@ import SwiftUI
 import Supabase
 import PostgREST
 import GoogleSignIn
+import AuthenticationServices
+import CryptoKit
 
 @Observable
 @MainActor
@@ -386,6 +388,64 @@ final class AppStore {
         )
         await checkSession()
         await loadMyRestaurants()
+    }
+
+    // MARK: - Sign in with Apple
+
+    /// The raw nonce for the in-flight Apple sign-in request. `SignInWithAppleButton`
+    /// needs the SHA256 hash at request time (`makeAppleNonce()`) and the raw value
+    /// again at completion time to hand to Supabase — this is where it waits in between.
+    private var currentAppleNonce: String?
+
+    /// Generates a fresh random nonce, remembers it, and returns its SHA256 hash for
+    /// `ASAuthorizationAppleIDRequest.nonce`. Required so Supabase can verify the ID
+    /// token was issued for *this* request, not replayed from another one.
+    func makeAppleNonce() -> String {
+        let nonce = Self.randomNonceString()
+        currentAppleNonce = nonce
+        return Self.sha256(nonce)
+    }
+
+    func signInWithApple(authorization: ASAuthorization) async throws {
+        guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential,
+              let tokenData = credential.identityToken,
+              let idToken = String(data: tokenData, encoding: .utf8) else {
+            throw NSError(
+                domain: "AppStore.AppleSignIn", code: -1,
+                userInfo: [NSLocalizedDescriptionKey: "لم يصل رمز الدخول من أبل"]
+            )
+        }
+        guard let nonce = currentAppleNonce else {
+            throw NSError(
+                domain: "AppStore.AppleSignIn", code: -2,
+                userInfo: [NSLocalizedDescriptionKey: "خطأ داخلي بجلسة الدخول، حاولي مرة ثانية"]
+            )
+        }
+        try await supabase.auth.signInWithIdToken(
+            credentials: OpenIDConnectCredentials(provider: .apple, idToken: idToken, nonce: nonce)
+        )
+        currentAppleNonce = nil
+        await checkSession()
+        await loadMyRestaurants()
+    }
+
+    private static func randomNonceString(length: Int = 32) -> String {
+        let charset: [Character] = Array("0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._")
+        var result = ""
+        var remaining = length
+        while remaining > 0 {
+            var random: UInt8 = 0
+            _ = SecRandomCopyBytes(kSecRandomDefault, 1, &random)
+            if random < charset.count {
+                result.append(charset[Int(random)])
+                remaining -= 1
+            }
+        }
+        return result
+    }
+
+    private static func sha256(_ input: String) -> String {
+        SHA256.hash(data: Data(input.utf8)).map { String(format: "%02x", $0) }.joined()
     }
 
     // MARK: - Favorites (local)

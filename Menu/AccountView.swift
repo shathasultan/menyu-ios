@@ -1,4 +1,5 @@
 import SwiftUI
+import AuthenticationServices
 
 /// The tab customers see. Shown instead of the vendor dashboard for anyone who
 /// isn't signed in, or who is signed in but doesn't own a restaurant yet — the
@@ -390,6 +391,32 @@ struct AccountSignInView: View {
                         RoundedRectangle(cornerRadius: 14).strokeBorder(Color.mLine, lineWidth: 1)
                     )
                 }
+                .disabled(isLoading)
+
+                // Sign in with Apple
+                SignInWithAppleButton(.signIn, onRequest: { request in
+                    request.requestedScopes = [.email, .fullName]
+                    request.nonce = store.makeAppleNonce()
+                }, onCompletion: { result in
+                    switch result {
+                    case .success(let authorization):
+                        Task {
+                            isLoading = true
+                            errorText = nil
+                            do {
+                                try await store.signInWithApple(authorization: authorization)
+                            } catch {
+                                errorText = error.localizedDescription
+                            }
+                            isLoading = false
+                        }
+                    case .failure(let error):
+                        errorText = error.localizedDescription
+                    }
+                })
+                .signInWithAppleButtonStyle(.black)
+                .frame(height: 50)
+                .clipShape(RoundedRectangle(cornerRadius: 14))
                 .disabled(isLoading)
 
                 Spacer().frame(height: 20)
