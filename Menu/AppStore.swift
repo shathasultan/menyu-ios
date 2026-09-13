@@ -333,6 +333,20 @@ final class AppStore {
         myRestaurants = []
     }
 
+    /// Permanently deletes the signed-in user's account (Apple Guideline 5.1.1(v):
+    /// any app with account creation must offer in-app account deletion). Calls
+    /// the `delete_user` Postgres function (security definer, scoped to
+    /// `auth.uid()` — see migration 0005), which cascades to every restaurant,
+    /// category, and item this account owns.
+    func deleteAccount() async throws {
+        try await supabase.rpc("delete_user").execute()
+        try? GIDSignIn.sharedInstance.signOut()
+        currentUserID = nil
+        currentUserEmail = nil
+        myRestaurants = []
+        selectedRestaurantID = nil
+    }
+
     /// Signs in with Google via the native GoogleSignIn SDK, then exchanges the resulting
     /// ID token with Supabase Auth. `presentingViewController` is required by the SDK to
     /// host the Google account picker.

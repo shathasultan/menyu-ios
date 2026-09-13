@@ -7,6 +7,7 @@ struct AccountView: View {
     @Environment(AppStore.self) private var store
     @State private var showCreateRestaurant = false
     @State private var confirmedVendorIntent = false
+    @State private var confirmDeleteAccount = false
 
     private var isArabic: Bool { store.language == .arabic }
 
@@ -101,6 +102,48 @@ struct AccountView: View {
                             }
                         }
                         .listRowBackground(Color.mSurface)
+
+                        Section {
+                            Button {
+                                confirmDeleteAccount = true
+                            } label: {
+                                Text(isArabic ? "حذف الحساب نهائيًا" : "Delete Account Permanently")
+                                    .font(.plexArabic(13.5, weight: .semibold))
+                                    .foregroundStyle(Color.mBad)
+                            }
+                        } footer: {
+                            Text(isArabic
+                                 ? "يحذف حسابك وكل مطاعمك وتصنيفاتك ومنتجاتك نهائيًا، بلا رجعة."
+                                 : "Permanently deletes your account and every restaurant, category, and item you own.")
+                                .font(.plexArabic(11))
+                                .foregroundStyle(Color.mInkFaint)
+                        }
+                        .listRowBackground(Color.mSurface)
+                        .confirmationDialog(
+                            isArabic
+                                ? "حذف حسابك نهائيًا؟ كل بياناتك ومطاعمك تُحذف معه، ولا يمكن التراجع."
+                                : "Permanently delete your account? All your data and restaurants go with it — this can't be undone.",
+                            isPresented: $confirmDeleteAccount,
+                            titleVisibility: .visible
+                        ) {
+                            Button(isArabic ? "حذف نهائيًا" : "Delete Permanently", role: .destructive) {
+                                Task {
+                                    do {
+                                        try await store.deleteAccount()
+                                    } catch {
+                                        store.errorMessage = error.localizedDescription
+                                    }
+                                }
+                            }
+                        }
+                        if let errorMessage = store.errorMessage {
+                            Section {
+                                Text(errorMessage)
+                                    .font(.plexArabic(12))
+                                    .foregroundStyle(Color.mBad)
+                            }
+                            .listRowBackground(Color.mSurface)
+                        }
                     }
                     .listStyle(.insetGrouped)
                     .scrollContentBackground(.hidden)
