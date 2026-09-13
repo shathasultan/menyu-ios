@@ -174,6 +174,11 @@ final class AppStore {
 
     func deleteRestaurant(_ restaurantID: UUID) async {
         do {
+            if let restaurant = myRestaurants.first(where: { $0.id == restaurantID }) {
+                var paths = restaurant.allItems.map { "\($0.id.uuidString).jpg" }
+                paths.append("restaurant-\(restaurantID.uuidString).jpg")
+                try? await supabase.storage.from("menu-images").remove(paths: paths)
+            }
             try await supabase.from("restaurants").delete().eq("id", value: restaurantID.uuidString).execute()
             await loadMyRestaurants()
             // Always leave selectedRestaurantID pointing at something real — otherwise
@@ -248,6 +253,13 @@ final class AppStore {
 
     func deleteCategory(_ categoryID: UUID) async {
         do {
+            let itemPaths = myRestaurants
+                .flatMap(\.categories)
+                .first(where: { $0.id == categoryID })?
+                .items.map { "\($0.id.uuidString).jpg" } ?? []
+            if !itemPaths.isEmpty {
+                try? await supabase.storage.from("menu-images").remove(paths: itemPaths)
+            }
             try await supabase.from("menu_categories").delete().eq("id", value: categoryID.uuidString).execute()
             await loadMyRestaurants()
         } catch {
@@ -257,6 +269,7 @@ final class AppStore {
 
     func deleteItem(_ itemID: UUID) async {
         do {
+            try? await supabase.storage.from("menu-images").remove(paths: ["\(itemID.uuidString).jpg"])
             try await supabase.from("menu_items").delete().eq("id", value: itemID.uuidString).execute()
             await loadMyRestaurants()
         } catch {
@@ -339,6 +352,12 @@ final class AppStore {
     /// `auth.uid()` — see migration 0005), which cascades to every restaurant,
     /// category, and item this account owns.
     func deleteAccount() async throws {
+        let paths = myRestaurants.flatMap { r -> [String] in
+            r.allItems.map { "\($0.id.uuidString).jpg" } + ["restaurant-\(r.id.uuidString).jpg"]
+        }
+        if !paths.isEmpty {
+            try? await supabase.storage.from("menu-images").remove(paths: paths)
+        }
         try await supabase.rpc("delete_user").execute()
         try? GIDSignIn.sharedInstance.signOut()
         currentUserID = nil
