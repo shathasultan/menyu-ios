@@ -1,9 +1,9 @@
 import SwiftUI
 
-/// Shown exactly once per device, right after the first splash — before any tab
-/// is reachable. Routes straight into the app for a plain visitor, or into the
-/// vendor sign-in flow for a business owner. See AppStore.skipVendorGateOnce for
-/// how the "vendor" choice here skips the in-app VendorIntentGateView too.
+/// Shown once per device, right after Welcome — before any tab is reachable.
+/// Routes straight into the app for a plain visitor, or into the vendor
+/// sign-in flow for a business owner. See AppStore.skipVendorGateOnce for how
+/// the "vendor" choice here skips the in-app VendorIntentGateView too.
 struct RoleGateView: View {
     @Environment(AppStore.self) private var store
     var onChooseCustomer: () -> Void
@@ -15,78 +15,96 @@ struct RoleGateView: View {
         ZStack {
             Color.mBackground.ignoresSafeArea()
 
-            VStack(spacing: 0) {
-                Spacer(minLength: 20)
-                    .frame(maxHeight: 90)
+            MDecorCircle(diameter: 240, color: .mAccent100)
+                .position(x: -70, y: -40)
 
-                VStack(spacing: 28) {
-                    foodIllustration
+            VStack(alignment: .trailing, spacing: 0) {
+                Text("menu.")
+                    .font(.plexMono(26, weight: .heavy))
+                    .tracking(-0.5)
+                    .foregroundStyle(Color.mInk)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                    .environment(\.layoutDirection, .leftToRight)
+                    .padding(.top, 74)
 
-                    VStack(spacing: 10) {
-                        Text(isArabic ? "قبل ما نبدأ" : "Before we start")
-                            .font(.plexArabic(21, weight: .bold))
-                            .foregroundStyle(Color.mInk)
+                Text(isArabic ? "كيف تحب تستخدم menu؟" : "How would you like to use menu?")
+                    .font(.plexArabicHeavy(27))
+                    .foregroundStyle(Color.mInk)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                    .padding(.top, 18)
+                    .padding(.bottom, 6)
 
-                        Text(isArabic
-                             ? "عندك مطعم أو مقهى أو كشك تبين تديره على منيو، أو بس تتصفحين؟"
-                             : "Do you run a restaurant, café, or kiosk you'd like to manage on Menu — or are you just browsing?")
-                            .font(.plexArabic(14))
-                            .foregroundStyle(Color.mInkSoft)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 28)
-                    }
+                Text(isArabic ? "اختر الوضع المناسب لك، ويمكنك تغييره في أي وقت." : "Pick what fits you — you can change it anytime.")
+                    .font(.plexArabic(13.5))
+                    .foregroundStyle(Color.mInkSecondary)
+                    .multilineTextAlignment(.trailing)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                    .padding(.bottom, 24)
+
+                VStack(spacing: 14) {
+                    roleCard(
+                        mascot: .calm,
+                        title: isArabic ? "تصفّح القوائم" : "Browse Menus",
+                        subtitle: isArabic ? "استعرض المطاعم، وابحث بالرمز، واحفظ اختياراتك المفضلة." : "Explore restaurants, search by code, and save your favorites.",
+                        tint: .mAccent, border: .mAccent300,
+                        action: onChooseCustomer
+                    )
+                    roleCard(
+                        mascot: .apron,
+                        title: isArabic ? "لدي متجر" : "I Have a Store",
+                        subtitle: isArabic ? "أضف تصنيفاتك ومنتجاتك، وتُنشأ الرموز تلقائيًا." : "Add your categories and items — codes are generated automatically.",
+                        tint: .mSage, border: .mSage300,
+                        action: onChooseVendor
+                    )
                 }
 
-                Spacer()
+                Spacer(minLength: 24)
 
-                VStack(spacing: 12) {
-                    Button(action: onChooseVendor) {
-                        Text(isArabic ? "نعم، عندي مطعم أو مقهى" : "Yes, I have a restaurant or café")
-                            .font(.plexArabic(14.5, weight: .semibold))
-                            .frame(maxWidth: .infinity)
-                            .padding(15)
-                            .background(Color.mAccent)
-                            .foregroundStyle(Color.mAccentInk)
-                            .clipShape(RoundedRectangle(cornerRadius: 14))
-                    }
-
-                    Button(action: onChooseCustomer) {
-                        Text(isArabic ? "لا، أنا زائر فقط" : "No, just browsing")
-                            .font(.plexArabic(14, weight: .medium))
-                            .frame(maxWidth: .infinity)
-                            .padding(15)
-                            .background(Color.mSurface)
-                            .foregroundStyle(Color.mInk)
-                            .clipShape(RoundedRectangle(cornerRadius: 14))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 14).strokeBorder(Color.mLine, lineWidth: 1)
-                            )
-                    }
-                }
-                .padding(.horizontal, 28)
-                .padding(.bottom, 20)
+                Text(isArabic ? "التصفّح متاح دون تسجيل، والتسجيل مطلوب لأصحاب المتاجر فقط." : "Browsing needs no account — sign-in is only for store owners.")
+                    .font(.plexArabic(11.5))
+                    .foregroundStyle(Color.mInkFaint)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
+                    .padding(.bottom, 16)
             }
+            .padding(.horizontal, 22)
         }
     }
 
-    private var foodIllustration: some View {
-        HStack(spacing: 18) {
-            illustrationTile(icon: "cup.and.saucer.fill", rotation: -8)
-            illustrationTile(icon: "takeoutbag.and.cup.and.straw.fill", rotation: 6, larger: true)
-            illustrationTile(icon: "fork.knife", rotation: -5)
-        }
-    }
+    private func roleCard(mascot: MascotVariant, title: String, subtitle: String, tint: Color, border: Color, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 16) {
+                MenyuMascot(variant: mascot, animated: false)
+                    .frame(width: 70, height: 83)
 
-    private func illustrationTile(icon: String, rotation: Double, larger: Bool = false) -> some View {
-        let size: CGFloat = larger ? 86 : 68
-        return ZStack {
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(Color.mAccentSoft)
-            Image(systemName: icon)
-                .font(.system(size: larger ? 34 : 26))
-                .foregroundStyle(Color.mAccentStrong)
+                VStack(alignment: .trailing, spacing: 4) {
+                    Text(title)
+                        .font(.plexArabicHeavy(19))
+                        .foregroundStyle(Color.mInk)
+                    Text(subtitle)
+                        .font(.plexArabic(12.5))
+                        .foregroundStyle(Color.mInkSecondary)
+                        .multilineTextAlignment(.trailing)
+                }
+
+                Circle()
+                    .fill(tint)
+                    .frame(width: 34, height: 34)
+                    .overlay(
+                        Image(systemName: "chevron.backward")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(.white)
+                    )
+            }
+            .padding(20)
+            .background(Color.mSurface)
+            .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .strokeBorder(border, lineWidth: 1.5)
+            )
+            .shadow(color: MTheme.shadowRaised(tint), radius: 20, x: 0, y: 6)
         }
-        .frame(width: size, height: size)
-        .rotationEffect(.degrees(rotation))
+        .buttonStyle(.plain)
     }
 }

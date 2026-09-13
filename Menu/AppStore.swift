@@ -284,10 +284,13 @@ final class AppStore {
     func loadPendingRestaurants() async {
         guard isAdmin else { return }
         do {
+            // Filters on `status`, not `is_published` — a rejected restaurant
+            // is also unpublished, but must never reappear in this queue
+            // (see migration 0006).
             let rows: [RestaurantRow] = try await supabase
                 .from("restaurants")
                 .select("*, menu_categories(*, menu_items(*))")
-                .eq("is_published", value: false)
+                .eq("status", value: "pending")
                 .order("created_at")
                 .execute()
                 .value
@@ -297,16 +300,56 @@ final class AppStore {
         }
     }
 
+    private struct RestaurantStatusUpdate: Encodable {
+        let isPublished: Bool
+        let status: String
+        enum CodingKeys: String, CodingKey {
+            case isPublished = "is_published"
+            case status
+        }
+    }
+
     func approveRestaurant(_ restaurantID: UUID) async {
         guard isAdmin else { return }
         do {
-            struct Publish: Encodable {
-                let isPublished: Bool
-                enum CodingKeys: String, CodingKey { case isPublished = "is_published" }
-            }
             try await supabase
                 .from("restaurants")
-                .update(Publish(isPublished: true))
+                .update(RestaurantStatusUpdate(isPublished: true, status: "approved"))
+                .eq("id", value: restaurantID.uuidString)
+                .execute()
+            await loadPendingRestaurants()
+            await loadRestaurants()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Permanently declines a pending application — it drops out of the
+    /// review queue for good and never reaches customers. There's no
+    /// owner-facing "rejected" screen yet; the restaurant just stays
+    /// unpublished from the owner's point of view.
+    func rejectRestaurant(_ restaurantID: UUID) async {
+        guard isAdmin else { return }
+        do {
+            try await supabase
+                .from("restaurants")
+                .update(RestaurantStatusUpdate(isPublished: false, status: "rejected"))
+                .eq("id", value: restaurantID.uuidString)
+                .execute()
+            await loadPendingRestaurants()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Pulls an already-live restaurant back to pending — it disappears from
+    /// customer surfaces immediately and returns to the review queue.
+    func suspendRestaurant(_ restaurantID: UUID) async {
+        guard isAdmin else { return }
+        do {
+            try await supabase
+                .from("restaurants")
+                .update(RestaurantStatusUpdate(isPublished: false, status: "pending"))
                 .eq("id", value: restaurantID.uuidString)
                 .execute()
             await loadPendingRestaurants()
@@ -333,11 +376,6 @@ final class AppStore {
         try await supabase.auth.signIn(email: email, password: password)
         await checkSession()
         await loadMyRestaurants()
-    }
-
-    func signUp(email: String, password: String) async throws {
-        try await supabase.auth.signUp(email: email, password: password)
-        await checkSession()
     }
 
     func signOut() async {

@@ -12,21 +12,30 @@ struct SearchView: View {
         NavigationStack {
             Group {
                 if query.isEmpty {
-                    ContentUnavailableView(
-                        store.language == .arabic ? "ابحث عن منتج" : "Find an Item",
-                        systemImage: "magnifyingglass",
-                        description: Text(store.language == .arabic
-                            ? "ابحث بالاسم أو الرمز مثل A01"
-                            : "Search by name or code like A01")
+                    mascotEmptyState(
+                        title: store.language == .arabic ? "ابحث عن منتج" : "Find an Item",
+                        description: store.language == .arabic ? "ابحث بالاسم أو الرمز مثل A01" : "Search by name or code like A01"
                     )
                 } else if results.isEmpty {
-                    ContentUnavailableView.search(text: query)
+                    mascotEmptyState(
+                        title: store.language == .arabic ? "لا توجد نتائج" : "No Results",
+                        description: store.language == .arabic
+                            ? "لا نتائج لـ \u{201C}\(query)\u{201D}. جرّبي حرف التصنيف مع الرقم، مثل A02."
+                            : "No results for \u{201C}\(query)\u{201D}. Try the category letter with a number, like A02."
+                    )
                 } else {
-                    List(results, id: \.item.id) { result in
-                        NavigationLink(destination: RestaurantMenuView(restaurant: result.restaurant)) {
-                            SearchResultRow(restaurant: result.restaurant, item: result.item)
+                    List {
+                        Text("\(results.count) \(store.language == .arabic ? "نتيجة لـ" : "results for") \u{201C}\(query)\u{201D}")
+                            .font(.plexArabic(12, weight: .semibold))
+                            .foregroundStyle(Color.mInkTertiary)
+                            .listRowSeparator(.hidden)
+                            .listRowBackground(Color.mBackground)
+                        ForEach(results, id: \.item.id) { result in
+                            NavigationLink(destination: RestaurantMenuView(restaurant: result.restaurant)) {
+                                SearchResultRow(restaurant: result.restaurant, item: result.item)
+                            }
+                            .listRowBackground(Color.mSurface)
                         }
-                        .listRowBackground(Color.mSurface)
                     }
                     .listStyle(.plain)
                     .scrollContentBackground(.hidden)
@@ -41,6 +50,22 @@ struct SearchView: View {
             .navigationTitle(store.language == .arabic ? "بحث" : "Search")
         }
     }
+
+    private func mascotEmptyState(title: String, description: String) -> some View {
+        VStack(spacing: 14) {
+            MenyuMascot(variant: .calm, bobDuration: 3.2)
+                .frame(width: 86, height: 102)
+            Text(title)
+                .font(.plexArabicHeavy(17))
+                .foregroundStyle(Color.mInk)
+            Text(description)
+                .font(.plexArabic(13))
+                .foregroundStyle(Color.mInkSecondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 30)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
 }
 
 private struct SearchResultRow: View {
@@ -49,25 +74,26 @@ private struct SearchResultRow: View {
     let item: MenuItem
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 12) {
             CodeChip(code: item.code)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.displayName(store.language))
-                    .font(.plexArabic(14, weight: .medium))
+                    .font(.plexArabic(14, weight: .bold))
                     .foregroundStyle(Color.mInk)
                 Text(restaurant.displayName(store.language))
                     .font(.plexArabic(12))
-                    .foregroundStyle(Color.mInkSoft)
+                    .foregroundStyle(Color.mInkSecondary)
             }
 
             Spacer()
 
             Text(priceText(item.price))
-                .font(.plexMono(13.5, weight: .semibold))
+                .font(.plexMono(15, weight: .bold))
                 .foregroundStyle(Color.mInk)
                 .environment(\.layoutDirection, .leftToRight)
         }
+        .padding(.vertical, 4)
     }
 
     private func priceText(_ price: Double) -> String {

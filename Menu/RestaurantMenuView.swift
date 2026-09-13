@@ -1,19 +1,38 @@
 import SwiftUI
+import CoreLocation
 
 struct RestaurantMenuView: View {
     @Environment(AppStore.self) private var store
     let restaurant: Restaurant
 
+    /// `nil` = "الكل" (all categories shown); otherwise filters to one category.
+    @State private var selectedCategoryID: MenuCategory.ID?
+    @State private var location = LocationProvider()
+
     var liveRestaurant: Restaurant {
         store.restaurants.first(where: { $0.id == restaurant.id }) ?? restaurant
     }
 
+    private var visibleCategories: [MenuCategory] {
+        guard let id = selectedCategoryID else { return liveRestaurant.categories }
+        return liveRestaurant.categories.filter { $0.id == id }
+    }
+
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                RestaurantHeader(restaurant: liveRestaurant)
+            VStack(alignment: .trailing, spacing: 0) {
+                RestaurantHeader(restaurant: liveRestaurant, userCoordinate: location.coordinate)
 
-                ForEach(liveRestaurant.categories) { category in
+                if liveRestaurant.categories.count > 1 {
+                    CategoryTabBar(
+                        categories: liveRestaurant.categories,
+                        selectedID: $selectedCategoryID,
+                        language: store.language
+                    )
+                    .padding(.top, 14)
+                }
+
+                ForEach(visibleCategories) { category in
                     CategorySection(restaurant: liveRestaurant, category: category)
                         .padding(.top, 8)
                 }
@@ -22,15 +41,37 @@ struct RestaurantMenuView: View {
             }
         }
         .background(Color.mBackground)
-        .navigationTitle(liveRestaurant.displayName(store.language))
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                ShareLink(item: "\(liveRestaurant.displayName(store.language)) · منيو") {
-                    Image(systemName: "square.and.arrow.up")
-                        .foregroundStyle(Color.mAccentStrong)
+        .navigationBarHidden(true)
+        .ignoresSafeArea(edges: .top)
+        .onAppear { location.requestIfNeeded() }
+    }
+}
+
+// MARK: - Category Tab Bar
+
+/// Horizontal «الكل» + one pill per category (`<letter> · <name>`), filtering
+/// which category's items are shown below.
+private struct CategoryTabBar: View {
+    let categories: [MenuCategory]
+    @Binding var selectedID: MenuCategory.ID?
+    let language: Language
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                MFilterChip(label: language == .arabic ? "الكل" : "All", selected: selectedID == nil) {
+                    selectedID = nil
+                }
+                ForEach(categories) { category in
+                    MFilterChip(
+                        label: "\(category.letter) · \(category.displayName(language))",
+                        selected: selectedID == category.id
+                    ) {
+                        selectedID = category.id
+                    }
                 }
             }
+            .padding(.horizontal)
         }
     }
 }
@@ -39,65 +80,112 @@ struct RestaurantMenuView: View {
 
 private struct RestaurantHeader: View {
     @Environment(AppStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
     let restaurant: Restaurant
+    var userCoordinate: CLLocationCoordinate2D?
+
+    private var isArabic: Bool { store.language == .arabic }
+    private var tint: (bg: Color, fg: Color) { restaurant.placeholderTint }
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Hero: restaurant photo if present, otherwise the accent gradient
-            ZStack {
-                if let urlString = restaurant.imageURL, let url = URL(string: urlString) {
-                    AsyncImage(url: url) { image in
-                        image.resizable().aspectRatio(contentMode: .fill)
-                    } placeholder: {
-                        LinearGradient(colors: [Color.mAccent, Color.mAccentDeep], startPoint: .topLeading, endPoint: .bottomTrailing)
-                    }
-                    Color.black.opacity(0.22)
-                } else {
-                    LinearGradient(
-                        colors: [Color.mAccent, Color.mAccentDeep],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                    // Decorative circles for depth
-                    Circle().fill(.white.opacity(0.10)).frame(width: 180).offset(x: 90, y: -15)
-                    Circle().fill(.white.opacity(0.07)).frame(width: 110).offset(x: -70, y: 40)
-                    Image(systemName: restaurant.type.icon)
-                        .font(.system(size: 50))
-                        .foregroundStyle(.white)
-                }
+        VStack(alignment: .trailing, spacing: 0) {
+            // Hero: soft decorative ground, the same logo used on the home
+            // card, the mascot, and the back/share row — no native nav bar.
+            ZStack(alignment: .topLeading) {
+                tint.bg.opacity(0.5)
+                Circle().fill(tint.bg).frame(width: 260).offset(x: 90, y: -110)
+                Circle().fill(Color.mSage100).frame(width: 160).offset(x: -140, y: 60)
+
+                MenyuMascot(variant: .default, bobDuration: 3.4)
+                    .frame(width: 62, height: 74)
+                    .padding(.trailing, 20)
+                    .padding(.bottom, 14)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
 
                 VStack {
-                    Spacer()
-                    HStack(spacing: 4) {
-                        Image(systemName: restaurant.type.icon).font(.caption2)
-                        Text(restaurant.type.label(store.language))
-                            .font(.plexArabic(12, weight: .semibold))
+                    HStack {
+                        Button { dismiss() } label: {
+                            Image(systemName: "chevron.forward")
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundStyle(Color.mInk)
+                                .frame(width: 38, height: 38)
+                                .background(.white)
+                                .clipShape(Circle())
+                        }
+                        Spacer()
+                        ShareLink(item: "\(restaurant.displayName(store.language)) · menu.") {
+                            HStack(spacing: 6) {
+                                Text(isArabic ? "شارك المنيو" : "Share Menu")
+                                    .font(.plexArabic(12.5, weight: .bold))
+                                Image(systemName: "square.and.arrow.up")
+                                    .font(.system(size: 12, weight: .bold))
+                            }
+                            .foregroundStyle(Color.mInk)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 9)
+                            .background(.white)
+                            .clipShape(Capsule())
+                        }
                     }
-                    .padding(.horizontal, 12).padding(.vertical, 5)
-                    .background(.white.opacity(0.18))
-                    .foregroundStyle(.white)
-                    .clipShape(Capsule())
-                    .padding(.bottom, restaurant.imageURL == nil ? 0 : 12)
+                    Spacer()
                 }
-            }
-            .frame(height: 165)
-            .clipped()
+                .padding(.horizontal, 16)
+                .padding(.top, 54)
 
-            // Restaurant info card
-            VStack(spacing: 6) {
-                Text(restaurant.displayName(store.language))
-                    .font(.plexArabic(19, weight: .bold))
-                    .foregroundStyle(Color.mInk)
-                Text(restaurant.displayDescription(store.language))
-                    .font(.plexArabic(13.5))
-                    .foregroundStyle(Color.mInkSoft)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 24)
+                logoTile
+                    .padding(.top, 100)
+                    .padding(.leading, 20)
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 18)
+            .frame(height: 230)
+
+            // Name / status / distance
+            VStack(alignment: .trailing, spacing: 6) {
+                HStack(spacing: 8) {
+                    Text(restaurant.displayName(store.language))
+                        .font(.plexArabicHeavy(22))
+                        .foregroundStyle(Color.mInk)
+                    if let isOpen = restaurant.isOpenNow {
+                        MTag(
+                            text: isOpen ? (isArabic ? "مفتوح الآن" : "Open Now") : (isArabic ? "مسكّر" : "Closed"),
+                            style: isOpen ? .tinted(.mSage100, .mSage800) : .neutral
+                        )
+                    }
+                }
+                HStack(spacing: 4) {
+                    Text(restaurant.type.label(store.language))
+                    if let distance = restaurant.distanceText(from: userCoordinate, language: store.language) {
+                        Text("·")
+                        Text(distance)
+                    }
+                }
+                .font(.plexArabic(12.5))
+                .foregroundStyle(Color.mInkSecondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .trailing)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
             .background(Color.mSurface)
         }
+    }
+
+    /// The exact same logo/placeholder treatment as the home card, so the
+    /// venue looks identical whether you're browsing the list or inside it.
+    private var logoTile: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: MTheme.radiusLogo, style: .continuous)
+                .fill(tint.bg)
+            if let urlString = restaurant.imageURL, let url = URL(string: urlString) {
+                AsyncImage(url: url) { $0.resizable().aspectRatio(contentMode: .fill) } placeholder: { Color.clear }
+                    .clipShape(RoundedRectangle(cornerRadius: MTheme.radiusLogo, style: .continuous))
+            } else {
+                Image(systemName: restaurant.type.icon)
+                    .font(.system(size: 26))
+                    .foregroundStyle(tint.fg)
+            }
+        }
+        .frame(width: 78, height: 78)
+        .overlay(RoundedRectangle(cornerRadius: MTheme.radiusLogo, style: .continuous).strokeBorder(.white, lineWidth: 3))
+        .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 3)
     }
 }
 
@@ -112,17 +200,17 @@ private struct CategorySection: View {
         VStack(alignment: .leading, spacing: 0) {
             // Category header bar
             HStack(spacing: 10) {
+                Text(category.displayName(store.language))
+                    .font(.plexArabic(15, weight: .bold))
+                    .foregroundStyle(Color.mInk)
+
                 Text(category.letter)
                     .font(.plexMono(14, weight: .bold))
                     .foregroundStyle(.white)
                     .frame(width: 32, height: 32)
-                    .background(Color.mAccent)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .background(Color.mInk)
+                    .clipShape(Circle())
                     .environment(\.layoutDirection, .leftToRight)
-
-                Text(category.displayName(store.language))
-                    .font(.plexArabic(15, weight: .bold))
-                    .foregroundStyle(Color.mInk)
 
                 Spacer()
 
@@ -130,7 +218,7 @@ private struct CategorySection: View {
                     .font(.plexMono(11, weight: .medium))
                     .padding(.horizontal, 8).padding(.vertical, 3)
                     .background(Color.mSurface2)
-                    .foregroundStyle(Color.mInkSoft)
+                    .foregroundStyle(Color.mInkSecondary)
                     .clipShape(Capsule())
                     .environment(\.layoutDirection, .leftToRight)
             }
@@ -146,7 +234,7 @@ private struct CategorySection: View {
                     }
                     .buttonStyle(.plain)
                     if index < category.items.count - 1 {
-                        Divider().padding(.leading, 78)
+                        Divider().padding(.trailing, 76)
                     }
                 }
             }
@@ -163,55 +251,51 @@ private struct MenuItemRow: View {
 
     var body: some View {
         HStack(spacing: 14) {
-            if let urlString = item.imageURL, let url = URL(string: urlString) {
-                AsyncImage(url: url) { image in
-                    image.resizable().aspectRatio(contentMode: .fill)
-                } placeholder: {
-                    Color.mSurface2
-                }
-                .frame(width: 50, height: 50)
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-            }
-
-            CodeChip(code: item.code, large: false)
+            CodeChip(code: item.code, large: true)
                 .opacity(item.isAvailable ? 1 : 0.5)
 
-            VStack(alignment: .leading, spacing: 4) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.mSurface2)
+                if let urlString = item.imageURL, let url = URL(string: urlString) {
+                    AsyncImage(url: url) { $0.resizable().aspectRatio(contentMode: .fill) } placeholder: { Color.clear }
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
+            }
+            .frame(width: 50, height: 50)
+
+            VStack(alignment: .trailing, spacing: 2) {
                 Text(item.displayName(store.language))
-                    .font(.plexArabic(14, weight: .medium))
+                    .font(.plexArabic(14, weight: .semibold))
                     .strikethrough(!item.isAvailable, color: Color.mInkFaint)
                     .foregroundStyle(item.isAvailable ? Color.mInk : Color.mInkFaint)
-
-                if item.isAvailable {
-                    Text(priceText(item.price))
-                        .font(.plexMono(13, weight: .semibold))
-                        .foregroundStyle(Color.mInk)
-                        .environment(\.layoutDirection, .leftToRight)
-                } else {
-                    Text(store.language == .arabic ? "غير متوفر" : "Unavailable")
-                        .font(.plexArabic(11, weight: .bold))
-                        .foregroundStyle(Color.mBad)
-                        .padding(.horizontal, 7).padding(.vertical, 2)
-                        .background(Color.mBadSoft)
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
-                }
+                Text(store.language == .arabic ? item.name : item.nameAr)
+                    .font(.plexMono(10.5))
+                    .foregroundStyle(Color.mInkFaint)
+                    .environment(\.layoutDirection, .leftToRight)
             }
 
             Spacer()
+
+            if item.isAvailable {
+                Text(priceText(item.price))
+                    .font(.plexMono(15, weight: .bold))
+                    .foregroundStyle(Color.mInk)
+                    .environment(\.layoutDirection, .leftToRight)
+            } else {
+                Text(store.language == .arabic ? "غير متوفر" : "Unavailable")
+                    .font(.plexArabic(11, weight: .bold))
+                    .foregroundStyle(Color.mInkSecondary)
+                    .padding(.horizontal, 7).padding(.vertical, 2)
+                    .background(Color.mChipFill)
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+            }
 
             Button {
                 store.toggleFavorite(item)
             } label: {
                 Image(systemName: store.isFavorite(item) ? "heart.fill" : "heart")
-                    .font(.system(size: 17))
-                    .foregroundStyle(store.isFavorite(item) ? Color.mBad : Color.mInkSoft)
-                    .frame(width: 30, height: 30)
-                    .background(store.isFavorite(item) ? Color.mBadSoft : Color.mSurface2)
-                    .clipShape(RoundedRectangle(cornerRadius: 9))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 9)
-                            .strokeBorder(store.isFavorite(item) ? Color.mBadSoft : Color.mLine, lineWidth: 1)
-                    )
+                    .font(.system(size: 15))
+                    .foregroundStyle(store.isFavorite(item) ? Color.mSage800 : Color.mInkSecondary)
             }
             .buttonStyle(.plain)
         }

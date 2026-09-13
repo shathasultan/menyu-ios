@@ -14,6 +14,8 @@
 	<key>GIDClientID</key>
 	<string>271491583565-70kjjou3ph2utm6c4mrmh5v5ntoua5aa.apps.googleusercontent.com</string>
 	<key>CFBundleDisplayName</key>
-	<string>منيو</string>
+	<string>menu.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>نحسب المسافة بينك وبين المطاعم القريبة منك.</string>
 </dict>
 </plist>

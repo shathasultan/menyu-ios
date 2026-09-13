@@ -36,7 +36,7 @@ struct ItemDetailView: View {
 
                     Text(restaurant.displayName(store.language))
                         .font(.plexArabic(13.5))
-                        .foregroundStyle(Color.mInkSoft)
+                        .foregroundStyle(Color.mInkSecondary)
                 }
 
                 Text(priceText(liveItem.price))
@@ -47,9 +47,9 @@ struct ItemDetailView: View {
                 if !liveItem.isAvailable {
                     Text(store.language == .arabic ? "غير متوفر حاليًا" : "Currently unavailable")
                         .font(.plexArabic(12, weight: .bold))
-                        .foregroundStyle(Color.mBad)
+                        .foregroundStyle(Color.mInkSecondary)
                         .padding(.horizontal, 12).padding(.vertical, 5)
-                        .background(Color.mBadSoft)
+                        .background(Color.mChipFill)
                         .clipShape(Capsule())
                 }
 
@@ -65,8 +65,8 @@ struct ItemDetailView: View {
                     .font(.plexArabic(14, weight: .semibold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 13)
-                    .background(store.isFavorite(liveItem) ? Color.mBadSoft : Color.mSurface2)
-                    .foregroundStyle(store.isFavorite(liveItem) ? Color.mBad : Color.mInkSoft)
+                    .background(store.isFavorite(liveItem) ? Color.mSage200 : Color.mSurface2)
+                    .foregroundStyle(store.isFavorite(liveItem) ? Color.mSage900 : Color.mInkSecondary)
                     .clipShape(RoundedRectangle(cornerRadius: MTheme.radiusSmall))
                 }
                 .padding(.horizontal, 32)
@@ -82,7 +82,7 @@ struct ItemDetailView: View {
             ToolbarItem(placement: .topBarTrailing) {
                 ShareLink(item: "\(liveItem.code) · \(liveItem.displayName(store.language)) · \(restaurant.displayName(store.language)) · منيو") {
                     Image(systemName: "square.and.arrow.up")
-                        .foregroundStyle(Color.mAccentStrong)
+                        .foregroundStyle(Color.mAccent800)
                 }
             }
         }

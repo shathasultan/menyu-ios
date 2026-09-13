@@ -1,243 +1,250 @@
 import SwiftUI
+import CoreLocation
 
 struct HomeView: View {
     @Environment(AppStore.self) private var store
     @State private var selectedType: RestaurantType? = nil
+    @State private var query = ""
+    @State private var location = LocationProvider()
+
+    private var isArabic: Bool { store.language == .arabic }
 
     var filtered: [Restaurant] {
-        guard let type = selectedType else { return store.restaurants }
-        return store.restaurants.filter { $0.type == type }
+        var list = store.restaurants
+        if let type = selectedType { list = list.filter { $0.type == type } }
+        let q = query.trimmingCharacters(in: .whitespaces)
+        guard !q.isEmpty else { return list }
+        return list.filter { $0.displayName(store.language).localizedCaseInsensitiveContains(q) }
     }
 
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
+                VStack(alignment: .trailing, spacing: 18) {
+                    header
+
+                    Text(isArabic ? "وش تشرب اليوم؟" : "What are you drinking today?")
+                        .font(.plexArabicHeavy(26))
+                        .foregroundStyle(Color.mInk)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+
+                    searchField
                     filterChips
 
-                    // Section header
                     HStack {
-                        Text(store.language == .arabic ? "المطاعم والمقاهي" : "Restaurants & Cafés")
+                        Text(isArabic ? "قريب منك" : "Near You")
                             .font(.plexArabic(15, weight: .bold))
                             .foregroundStyle(Color.mInk)
                         Spacer()
                         if !store.isLoading {
-                            Text("\(filtered.count)")
-                                .font(.plexMono(12, weight: .semibold))
-                                .padding(.horizontal, 8).padding(.vertical, 3)
-                                .background(Color.mSurface2)
-                                .foregroundStyle(Color.mInkSoft)
-                                .clipShape(Capsule())
-                                .environment(\.layoutDirection, .leftToRight)
+                            Text("\(filtered.count) \(isArabic ? "مكان" : "places")")
+                                .font(.plexArabic(12))
+                                .foregroundStyle(Color.mInkTertiary)
                         }
                     }
-                    .padding(.horizontal)
 
-                    // Grid content
-                    if store.isLoading && store.restaurants.isEmpty {
-                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 14) {
-                            ForEach(0..<6, id: \.self) { _ in SkeletonRestaurantCard() }
-                        }
-                        .padding(.horizontal)
-                    } else if let error = store.errorMessage, store.restaurants.isEmpty {
-                        VStack(spacing: 16) {
-                            ContentUnavailableView(
-                                store.language == .arabic ? "خطأ في الاتصال" : "Connection Error",
-                                systemImage: "wifi.slash",
-                                description: Text(error)
-                            )
-                            Button {
-                                Task { await store.loadRestaurants() }
-                            } label: {
-                                Text(store.language == .arabic ? "المحاولة مجددًا" : "Try Again")
-                                    .font(.plexArabic(14.5, weight: .semibold))
-                                    .padding(.horizontal, 24).padding(.vertical, 10)
-                                    .background(Color.mAccent)
-                                    .foregroundStyle(Color.mAccentInk)
-                                    .clipShape(Capsule())
-                            }
-                        }
-                        .padding(.horizontal)
-                    } else if filtered.isEmpty {
-                        ContentUnavailableView(
-                            store.language == .arabic ? "لا نتائج" : "No Results",
-                            systemImage: "fork.knife",
-                            description: Text(store.language == .arabic
-                                ? "لا توجد مطاعم بهذا التصنيف"
-                                : "No restaurants match this filter")
-                        )
-                    } else {
-                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 14) {
-                            ForEach(filtered) { restaurant in
-                                NavigationLink(destination: RestaurantMenuView(restaurant: restaurant)) {
-                                    RestaurantCard(restaurant: restaurant)
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-                        .padding(.horizontal)
-                        .padding(.bottom, 20)
-                    }
+                    content
                 }
-                .padding(.top, 12)
+                .padding(.horizontal)
+                .padding(.top, 8)
+                .padding(.bottom, 20)
             }
             .background(Color.mBackground)
-            .refreshable { await store.loadRestaurants() }
-            .navigationTitle(store.language == .arabic ? "منيو" : "Menū")
-            .navigationBarTitleDisplayMode(.large)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        store.language = store.language == .arabic ? .english : .arabic
-                    } label: {
-                        Text(store.language == .arabic ? "EN" : "ع")
-                            .font(.plexMono(14, weight: .bold))
-                            .frame(width: 34, height: 34)
-                            .background(Color.mAccentSoft)
-                            .foregroundStyle(Color.mAccentStrong)
-                            .clipShape(Circle())
-                    }
-                }
+            .refreshable {
+                await store.loadRestaurants()
+                location.requestIfNeeded()
+            }
+            .navigationBarHidden(true)
+            .onAppear { location.requestIfNeeded() }
+        }
+    }
+
+    private var header: some View {
+        HStack {
+            Text("menu.")
+                .font(.plexMono(21, weight: .heavy))
+                .foregroundStyle(Color.mInk)
+                .environment(\.layoutDirection, .leftToRight)
+
+            Spacer()
+
+            Button {
+                store.language = store.language == .arabic ? .english : .arabic
+            } label: {
+                Text(store.language == .arabic ? "English" : "العربية")
+                    .font(.plexArabic(11.5, weight: .bold))
+                    .foregroundStyle(Color.mAccent800)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 7)
+                    .background(Color.mAccent100)
+                    .clipShape(Capsule())
             }
         }
+        .padding(.top, 6)
+    }
+
+    private var searchField: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(Color.mInkFaint)
+            TextField(isArabic ? "ابحث بالرمز أو الاسم... مثال B03" : "Search by code or name... e.g. B03", text: $query)
+                .font(.plexArabic(14))
+                .multilineTextAlignment(.trailing)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 13)
+        .background(Color.mSurface)
+        .clipShape(Capsule())
+        .overlay(Capsule().strokeBorder(Color.mLine, lineWidth: 1))
     }
 
     private var filterChips: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
-                FilterChip(
-                    title: store.language == .arabic ? "الكل" : "All",
-                    isSelected: selectedType == nil
-                ) { selectedType = nil }
-
+                MFilterChip(label: isArabic ? "الكل" : "All", selected: selectedType == nil) { selectedType = nil }
                 ForEach(RestaurantType.allCases, id: \.self) { type in
-                    FilterChip(
-                        title: type.label(store.language),
-                        icon: type.icon,
-                        isSelected: selectedType == type
-                    ) {
+                    MFilterChip(label: type.label(store.language), selected: selectedType == type) {
                         selectedType = selectedType == type ? nil : type
                     }
                 }
             }
-            .padding(.horizontal)
         }
     }
-}
 
-// MARK: - Filter Chip
-
-struct FilterChip: View {
-    let title: String
-    var icon: String? = nil
-    let isSelected: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 5) {
-                if let icon {
-                    Image(systemName: icon).font(.caption)
-                }
-                Text(title)
-                    .font(.plexArabic(13, weight: isSelected ? .semibold : .regular))
+    @ViewBuilder
+    private var content: some View {
+        if store.isLoading && store.restaurants.isEmpty {
+            VStack(spacing: 12) { ForEach(0..<4, id: \.self) { _ in SkeletonRestaurantRow() } }
+        } else if let error = store.errorMessage, store.restaurants.isEmpty {
+            VStack(spacing: 16) {
+                ContentUnavailableView(
+                    isArabic ? "خطأ في الاتصال" : "Connection Error",
+                    systemImage: "wifi.slash",
+                    description: Text(error)
+                )
+                Button {
+                    Task { await store.loadRestaurants() }
+                } label: { Text(isArabic ? "المحاولة مجددًا" : "Try Again") }
+                    .buttonStyle(.mPrimary(.mAccent, fullWidth: false))
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-            .background(isSelected ? Color.mInk : Color.mSurface)
-            .foregroundStyle(isSelected ? Color.mBackground : Color.mInkSoft)
-            .clipShape(Capsule())
-            .overlay(
-                Capsule().strokeBorder(isSelected ? Color.clear : Color.mLine, lineWidth: 1)
+        } else if filtered.isEmpty {
+            ContentUnavailableView(
+                isArabic ? "لا نتائج" : "No Results",
+                systemImage: "fork.knife",
+                description: Text(isArabic ? "لا توجد مطاعم بهذا التصنيف" : "No restaurants match this filter")
             )
+        } else {
+            VStack(spacing: 12) {
+                ForEach(filtered) { restaurant in
+                    NavigationLink(destination: RestaurantMenuView(restaurant: restaurant)) {
+                        RestaurantListRow(restaurant: restaurant, userCoordinate: location.coordinate)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
         }
     }
 }
 
-// MARK: - Restaurant Card
+// MARK: - Restaurant Row (list card, matching the customer home mock)
 
-struct RestaurantCard: View {
+struct RestaurantListRow: View {
     @Environment(AppStore.self) private var store
     let restaurant: Restaurant
+    var userCoordinate: CLLocationCoordinate2D?
+
+    private var isArabic: Bool { store.language == .arabic }
+
+    private var placeholderTint: (bg: Color, fg: Color) { restaurant.placeholderTint }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        HStack(alignment: .top, spacing: 14) {
             ZStack {
+                RoundedRectangle(cornerRadius: MTheme.radiusLogo, style: .continuous)
+                    .fill(placeholderTint.bg)
                 if let urlString = restaurant.imageURL, let url = URL(string: urlString) {
-                    AsyncImage(url: url) { image in
-                        image.resizable().aspectRatio(contentMode: .fill)
-                    } placeholder: {
-                        Color.mAccentSoft
-                    }
+                    AsyncImage(url: url) { $0.resizable().aspectRatio(contentMode: .fill) } placeholder: { Color.clear }
+                        .clipShape(RoundedRectangle(cornerRadius: MTheme.radiusLogo, style: .continuous))
                 } else {
-                    Color.mAccentSoft
                     Image(systemName: restaurant.type.icon)
-                        .font(.system(size: 34))
-                        .foregroundStyle(Color.mAccentStrong)
+                        .font(.system(size: 30))
+                        .foregroundStyle(placeholderTint.fg)
                 }
             }
-            .frame(height: 88)
-            .clipped()
+            .frame(width: 84, height: 84)
 
-            VStack(alignment: .leading, spacing: 6) {
-                Text(restaurant.displayName(store.language))
-                    .font(.plexArabic(14.5, weight: .bold))
-                    .lineLimit(1).foregroundStyle(Color.mInk)
-
-                HStack(spacing: 3) {
-                    Image(systemName: restaurant.type.icon).font(.system(size: 9))
-                    Text(restaurant.type.label(store.language))
-                        .font(.plexArabic(11, weight: .semibold))
+            // `maxWidth: .infinity` here — not a `Spacer()` alongside it —
+            // is what guarantees every row inside (name, type/distance,
+            // counts) reaches the exact same right edge flush against the
+            // logo: they're all `.trailing`-aligned within ONE block whose
+            // own right edge is pinned there, instead of each row sizing
+            // to its own content and drifting apart.
+            VStack(alignment: .trailing, spacing: 7) {
+                HStack(spacing: 6) {
+                    Text(restaurant.displayName(store.language))
+                        .font(.plexArabicHeavy(16.5))
+                        .foregroundStyle(Color.mInk)
+                        .lineLimit(1)
+                    if let isOpen = restaurant.isOpenNow {
+                        MTag(
+                            text: isOpen ? (isArabic ? "مفتوح" : "Open") : (isArabic ? "مسكّر" : "Closed"),
+                            style: isOpen ? .tinted(.mSage100, .mSage800) : .neutral
+                        )
+                    }
                 }
-                .padding(.horizontal, 8).padding(.vertical, 4)
-                .background(Color.mAccentSoft)
-                .foregroundStyle(Color.mAccentStrong)
-                .clipShape(Capsule())
 
-                Text("\(restaurant.allItems.count) \(store.language == .arabic ? "منتج" : "items")")
-                    .font(.plexArabic(11))
+                HStack(spacing: 4) {
+                    Text(restaurant.type.label(store.language))
+                    if let distance = restaurant.distanceText(from: userCoordinate, language: store.language) {
+                        Text("·")
+                        Text(distance)
+                    }
+                }
+                .font(.plexArabic(12))
+                .foregroundStyle(Color.mInkTertiary)
+
+                Text("\(restaurant.allItems.count) \(isArabic ? "منتج" : "items") · \(restaurant.categories.count) \(isArabic ? "تصنيفات" : "categories")")
+                    .font(.plexArabic(11.5))
                     .foregroundStyle(Color.mInkFaint)
             }
-            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .trailing)
         }
+        .padding(13)
+        .padding(.leading, 22)
         .mCardStyle()
+        .overlay(alignment: .leading) {
+            // Independent of the HStack's own flex layout on purpose — an
+            // overlay centers vertically by default and never competes with
+            // the text block above for the same flexible space.
+            Image(systemName: "chevron.left")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(Color.mInkFaint)
+                .padding(.leading, 14)
+        }
     }
 }
 
-// MARK: - Skeleton Card
+// MARK: - Skeleton Row
 
-private struct SkeletonRestaurantCard: View {
+private struct SkeletonRestaurantRow: View {
     @State private var opacity = 0.45
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Color.mSurface2.frame(height: 88)
-
-            VStack(alignment: .leading, spacing: 8) {
-                Capsule()
-                    .fill(Color.mSurface2)
-                    .frame(height: 13)
-                    .padding(.trailing, 28)
-
-                HStack(spacing: 0) {
-                    Capsule()
-                        .fill(Color.mSurface2)
-                        .frame(width: 56, height: 18)
-                    Spacer()
-                }
-
-                Capsule()
-                    .fill(Color.mSurface2)
-                    .frame(width: 48, height: 10)
+        HStack(spacing: 12) {
+            VStack(alignment: .trailing, spacing: 8) {
+                Capsule().fill(Color.mSurface2).frame(width: 120, height: 14)
+                Capsule().fill(Color.mSurface2).frame(width: 90, height: 11)
+                Capsule().fill(Color.mSurface2).frame(width: 70, height: 10)
             }
-            .padding(12)
+            RoundedRectangle(cornerRadius: MTheme.radiusLogo, style: .continuous)
+                .fill(Color.mSurface2)
+                .frame(width: 78, height: 78)
         }
+        .padding(14)
         .mCardStyle()
         .opacity(opacity)
         .onAppear {
-            withAnimation(.easeInOut(duration: 0.85).repeatForever(autoreverses: true)) {
-                opacity = 1.0
-            }
+            withAnimation(.easeInOut(duration: 0.85).repeatForever(autoreverses: true)) { opacity = 1.0 }
         }
     }
 }

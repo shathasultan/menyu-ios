@@ -13,6 +13,12 @@ struct MenuApp: App {
     init() {
         MFontRegistrar.registerBundledFonts()
         configureTabBarAppearance()
+        // No static semanticContentAttribute default here on purpose: a
+        // fixed `UIView.appearance()` value never updates again after
+        // launch, so it would permanently pin every newly-created UIKit
+        // view to whatever direction was set here — even after the user
+        // switches the in-app language. ContentView owns this dynamically
+        // instead; see `applyWindowDirection()`.
         if let clientID = Bundle.main.object(forInfoDictionaryKey: "GIDClientID") as? String {
             GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: clientID)
         }

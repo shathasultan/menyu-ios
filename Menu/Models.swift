@@ -1,4 +1,19 @@
 import Foundation
+import CoreLocation
+import SwiftUI
+
+extension Restaurant {
+    /// No per-venue accent color is stored, so the logo placeholder tint
+    /// rotates through the two role ramps for visual variety, keyed off a
+    /// stable per-restaurant value (its id) rather than list position. The
+    /// SAME formula everywhere a restaurant's logo placeholder renders — the
+    /// venue detail hero and the home list card always agree on the color.
+    var placeholderTint: (bg: Color, fg: Color) {
+        let ramps: [(Color, Color)] = [(.mAccent100, .mAccent700), (.mSage100, .mSage700), (.mAccent200, .mAccent800), (.mSage200, .mSage800)]
+        let index = abs(id.hashValue) % ramps.count
+        return ramps[index]
+    }
+}
 
 enum Language {
     case arabic, english
@@ -83,5 +98,51 @@ struct Restaurant: Identifiable {
 
     var allItems: [MenuItem] {
         categories.flatMap { $0.items }
+    }
+
+    /// Real open/closed, computed from the vendor's own hours — never
+    /// fabricated. `nil` when hours haven't been set yet.
+    var isOpenNow: Bool? {
+        guard let opensAt, let closesAt,
+              let open = Self.minutesSinceMidnight(opensAt),
+              let close = Self.minutesSinceMidnight(closesAt) else { return nil }
+        let now = Calendar.current.dateComponents([.hour, .minute], from: Date())
+        guard let h = now.hour, let m = now.minute else { return nil }
+        let nowMinutes = h * 60 + m
+        if close > open {
+            return nowMinutes >= open && nowMinutes < close
+        } else {
+            // Overnight range (e.g. 18:00–02:00).
+            return nowMinutes >= open || nowMinutes < close
+        }
+    }
+
+    private static func minutesSinceMidnight(_ hhmm: String) -> Int? {
+        let parts = hhmm.split(separator: ":")
+        guard parts.count == 2, let h = Int(parts[0]), let m = Int(parts[1]) else { return nil }
+        return h * 60 + m
+    }
+
+    /// Real distance from the given coordinate, using the vendor's own
+    /// stored location. `nil` when either side is missing — never a guess.
+    func distanceText(from userCoordinate: CLLocationCoordinate2D?, language: Language) -> String? {
+        guard let userCoordinate, let latitude, let longitude else { return nil }
+        let venue = CLLocation(latitude: latitude, longitude: longitude)
+        let user = CLLocation(latitude: userCoordinate.latitude, longitude: userCoordinate.longitude)
+        let meters = venue.distance(from: user)
+        if meters < 1000 {
+            let m = Int(meters.rounded(to: 50))
+            return language == .arabic ? "\(m) م" : "\(m) m"
+        }
+        let km = (meters / 1000).rounded(toPlaces: 1)
+        return language == .arabic ? "\(km) كم" : "\(km) km"
+    }
+}
+
+private extension Double {
+    func rounded(to step: Double) -> Double { (self / step).rounded() * step }
+    func rounded(toPlaces places: Int) -> Double {
+        let f = pow(10.0, Double(places))
+        return (self * f).rounded() / f
     }
 }

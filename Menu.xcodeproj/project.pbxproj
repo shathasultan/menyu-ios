@@ -32,15 +32,11 @@
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		B85AA4344FCEAFF4BD21AA9C /* MenuTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
 			path = MenuTests;
 			sourceTree = "<group>";
 		};
 		C0A5D5853051D73200D334FB /* Menu */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
 			path = Menu;
 			sourceTree = "<group>";
 		};

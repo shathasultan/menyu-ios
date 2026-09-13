@@ -3,19 +3,6 @@ import SwiftUI
 struct FavoritesView: View {
     @Environment(AppStore.self) private var store
 
-    var grouped: [(id: UUID, restaurant: Restaurant, items: [MenuItem])] {
-        var dict: [UUID: (restaurant: Restaurant, items: [MenuItem])] = [:]
-        for entry in store.favoriteItems {
-            if dict[entry.restaurant.id] == nil {
-                dict[entry.restaurant.id] = (entry.restaurant, [])
-            }
-            dict[entry.restaurant.id]?.items.append(entry.item)
-        }
-        return dict
-            .map { (id: $0.key, restaurant: $0.value.restaurant, items: $0.value.items) }
-            .sorted { $0.restaurant.displayName(store.language) < $1.restaurant.displayName(store.language) }
-    }
-
     var body: some View {
         NavigationStack {
             Group {
@@ -28,32 +15,24 @@ struct FavoritesView: View {
                             : "Tap ♡ next to any item to save it here")
                     )
                 } else {
-                    List {
-                        ForEach(grouped, id: \.id) { group in
-                            Section {
-                                ForEach(group.items) { item in
-                                    FavoriteItemRow(item: item)
-                                }
-                                .listRowBackground(Color.mSurface)
-                            } header: {
-                                Text(group.restaurant.displayName(store.language))
-                                    .font(.plexArabic(12.5, weight: .semibold))
-                                    .foregroundStyle(Color.mInkSoft)
-                            }
-                        }
+                    List(store.favoriteItems, id: \.item.id) { entry in
+                        FavoriteItemRow(restaurant: entry.restaurant, item: entry.item)
+                            .listRowBackground(Color.mSurface)
                     }
+                    .listStyle(.plain)
                     .scrollContentBackground(.hidden)
                     .background(Color.mBackground)
                 }
             }
             .background(Color.mBackground)
-            .navigationTitle(store.language == .arabic ? "المفضلة" : "Favorites")
+            .navigationTitle(store.language == .arabic ? "مفضلاتي" : "Favorites")
         }
     }
 }
 
 private struct FavoriteItemRow: View {
     @Environment(AppStore.self) private var store
+    let restaurant: Restaurant
     let item: MenuItem
 
     var body: some View {
@@ -62,23 +41,28 @@ private struct FavoriteItemRow: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.displayName(store.language))
-                    .font(.plexArabic(14, weight: .medium))
+                    .font(.plexArabic(14, weight: .bold))
                     .foregroundStyle(Color.mInk)
-                Text(priceText(item.price))
-                    .font(.plexMono(12, weight: .semibold))
-                    .foregroundStyle(Color.mInk)
-                    .environment(\.layoutDirection, .leftToRight)
+                Text(restaurant.displayName(store.language))
+                    .font(.plexArabic(12))
+                    .foregroundStyle(Color.mInkSecondary)
             }
 
             Spacer()
 
+            Text(priceText(item.price))
+                .font(.plexMono(14, weight: .bold))
+                .foregroundStyle(Color.mInk)
+                .environment(\.layoutDirection, .leftToRight)
+
             Button {
                 store.toggleFavorite(item)
             } label: {
-                Image(systemName: "heart.fill").foregroundStyle(Color.mBad)
+                Image(systemName: "heart.fill").foregroundStyle(Color.mSage)
             }
             .buttonStyle(.plain)
         }
+        .padding(.vertical, 4)
     }
 
     private func priceText(_ price: Double) -> String {

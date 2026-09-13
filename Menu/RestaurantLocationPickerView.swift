@@ -34,7 +34,7 @@ struct RestaurantLocationPickerView: View {
                 MapReader { proxy in
                     Map(position: $position) {
                         Marker(isArabic ? "موقع المطعم" : "Restaurant", coordinate: pinCoordinate)
-                            .tint(Color.mAccentStrong)
+                            .tint(Color.mSage700)
                     }
                     .onTapGesture { screenPoint in
                         if let coordinate = proxy.convert(screenPoint, from: .local) {
@@ -48,7 +48,7 @@ struct RestaurantLocationPickerView: View {
                          ? "انقري على الخريطة لتحديد موقع مطعمك"
                          : "Tap the map to set your restaurant's location")
                         .font(.plexArabic(12.5))
-                        .foregroundStyle(Color.mInkSoft)
+                        .foregroundStyle(Color.mInkSecondary)
                         .multilineTextAlignment(.center)
 
                     Button {
@@ -66,13 +66,8 @@ struct RestaurantLocationPickerView: View {
                             if isSaving { ProgressView().tint(.white).scaleEffect(0.85) }
                             Text(isArabic ? "حفظ الموقع" : "Save Location")
                         }
-                        .font(.plexArabic(14.5, weight: .semibold))
-                        .frame(maxWidth: .infinity)
-                        .padding(14)
-                        .background(Color.mAccent)
-                        .foregroundStyle(Color.mAccentInk)
-                        .clipShape(RoundedRectangle(cornerRadius: 14))
                     }
+                    .buttonStyle(.mPrimary(.mSage))
                     .disabled(isSaving)
                 }
                 .padding(16)
@@ -84,7 +79,7 @@ struct RestaurantLocationPickerView: View {
                 ToolbarItem(placement: .topBarLeading) {
                     Button(isArabic ? "إلغاء" : "Cancel") { dismiss() }
                         .font(.plexArabic(14))
-                        .foregroundStyle(Color.mInkSoft)
+                        .foregroundStyle(Color.mInkSecondary)
                 }
             }
         }

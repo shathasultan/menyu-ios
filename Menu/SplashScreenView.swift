@@ -1,64 +1,48 @@
 import SwiftUI
 
-/// Shown for ~3s on every cold launch. Midnight-gradient background ("ليل
-/// وزعفران" identity), the layered-card logo mark settling into place, then
-/// "Menu" typed out in English beneath it.
+/// Brand moment on cold start — white background, bobbing mascot, wordmark.
+/// Auto-advances after ~2000ms; tapping anywhere skips immediately.
 struct SplashScreenView: View {
-    private let fullText = "Menu"
+    var onFinished: () -> Void
 
-    @State private var cardsAppeared = false
-    @State private var visibleCharacterCount = 0
+    @State private var advanced = false
 
     var body: some View {
         ZStack {
-            LinearGradient(
-                colors: [Color.mAccent, Color.mAccentDeep],
-                startPoint: .topLeading, endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
+            Color.mBackground.ignoresSafeArea()
 
-            VStack(spacing: 28) {
-                logoMark
-                    .frame(width: 132, height: 132)
+            MDecorCircle(diameter: 260, color: .mAccent100)
+                .position(x: UIScreen.main.bounds.width + 30, y: -30)
 
-                Text(String(fullText.prefix(visibleCharacterCount)))
-                    .font(.plexMono(30, weight: .bold))
-                    .foregroundStyle(.white)
-                    .frame(height: 36)
+            MDecorCircle(diameter: 200, color: .mSage100)
+                .position(x: -60, y: UIScreen.main.bounds.height + 40)
+
+            VStack(spacing: 26) {
+                MenyuMascot(variant: .default, bobDuration: 3.0)
+                    .frame(width: 132, height: 156)
+
+                Text("menu.")
+                    .font(.plexMono(26, weight: .heavy))
+                    .tracking(-0.5)
+                    .foregroundStyle(Color.mInk)
                     .environment(\.layoutDirection, .leftToRight)
             }
         }
+        .contentShape(Rectangle())
+        .onTapGesture { finish() }
         .task {
-            withAnimation(.spring(response: 0.55, dampingFraction: 0.68)) {
-                cardsAppeared = true
-            }
-            try? await Task.sleep(for: .seconds(0.45))
-            for i in 1...fullText.count {
-                visibleCharacterCount = i
-                try? await Task.sleep(for: .seconds(0.09))
-            }
+            try? await Task.sleep(for: .milliseconds(2000))
+            finish()
         }
     }
 
-    private var logoMark: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 9, style: .continuous)
-                .fill(Color.white.opacity(0.32))
-                .frame(width: 68, height: 42)
-                .rotationEffect(.degrees(-11))
-                .offset(x: 14, y: 10)
-
-            RoundedRectangle(cornerRadius: 9, style: .continuous)
-                .fill(Color.mBackground)
-                .frame(width: 72, height: 44)
-                .rotationEffect(.degrees(cardsAppeared ? 6 : -6))
-                .offset(x: -14, y: -8)
-        }
-        .scaleEffect(cardsAppeared ? 1 : 0.6)
-        .opacity(cardsAppeared ? 1 : 0)
+    private func finish() {
+        guard !advanced else { return }
+        advanced = true
+        onFinished()
     }
 }
 
 #Preview {
-    SplashScreenView()
+    SplashScreenView(onFinished: {})
 }
