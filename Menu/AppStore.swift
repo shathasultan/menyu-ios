@@ -30,10 +30,18 @@ final class AppStore {
 
     var isAuthenticated: Bool { currentUserID != nil }
 
-    /// Single hardcoded reviewer for now — there is exactly one person operating this app.
-    /// Move to a real roles table if a second admin is ever needed.
-    private static let adminEmail = "shathasultann9@gmail.com"
-    var isAdmin: Bool { currentUserEmail == Self.adminEmail }
+    /// Hardcoded reviewers. The second address exists so reviewers can try the
+    /// admin role without being handed the owner's personal account; it is
+    /// granted the same two policies in migration 0007.
+    /// Move to a real roles table if a third admin is ever needed.
+    private static let adminEmails: Set<String> = [
+        "shathasultann9@gmail.com",
+        "demo.admin@menyu.sa",
+    ]
+    var isAdmin: Bool {
+        guard let email = currentUserEmail else { return false }
+        return Self.adminEmails.contains(email)
+    }
 
     private static let favoritesDefaultsKey = "menu.favoriteItemIDs.v1"
 
