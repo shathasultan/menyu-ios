@@ -126,7 +126,7 @@ struct AdminLoginView: View {
                 error = isArabic ? "هذا البريد لا يملك صلاحية الإدارة." : "This email doesn't have admin access."
             }
         } catch {
-            self.error = isArabic ? "البريد أو كلمة المرور غير صحيحة." : "Incorrect email or password."
+            self.error = AppStore.passwordSignInMessage(error, isArabic: isArabic)
         }
     }
 }

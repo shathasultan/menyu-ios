@@ -192,7 +192,7 @@ struct AccountSignInView: View {
                         isLoading = true
                         errorText = nil
                         do { try await store.signInWithGoogle(presenting: presenter) }
-                        catch { errorText = isArabic ? "تعذّر الدخول بحساب قوقل." : "Couldn't sign in with Google." }
+                        catch { errorText = AppStore.googleSignInMessage(error, isArabic: isArabic) }
                         isLoading = false
                     }
                 } label: {

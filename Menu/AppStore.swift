@@ -511,6 +511,31 @@ final class AppStore {
         SHA256.hash(data: Data(input.utf8)).map { String(format: "%02x", $0) }.joined()
     }
 
+    // MARK: - Sign-in failure text
+
+    /// One generic line for every failure is why a broken sign-in can't be
+    /// diagnosed from the screen: a cancelled picker, Auth being unreachable,
+    /// a mistyped client ID and a revoked OAuth credential all looked
+    /// identical. Cancelling is not a failure and says nothing at all;
+    /// everything else keeps the friendly line and appends the real reason.
+    nonisolated static func googleSignInMessage(_ error: Error, isArabic: Bool) -> String? {
+        let ns = error as NSError
+        if ns.domain == kGIDSignInErrorDomain, ns.code == GIDSignInError.Code.canceled.rawValue {
+            return nil
+        }
+        let lead = isArabic ? "تعذّر الدخول بحساب قوقل." : "Couldn't sign in with Google."
+        return "\(lead)\n\(ns.localizedDescription)"
+    }
+
+    /// Same reasoning for the admin form, where "incorrect email or password"
+    /// was a guess — and the wrong one whenever the real cause was an
+    /// unconfirmed address, a user created without a password, or Auth being
+    /// down. State what actually came back instead of assuming.
+    nonisolated static func passwordSignInMessage(_ error: Error, isArabic: Bool) -> String {
+        let lead = isArabic ? "تعذّر تسجيل الدخول." : "Couldn't sign in."
+        return "\(lead)\n\((error as NSError).localizedDescription)"
+    }
+
     // MARK: - Favorites (local)
 
     func isFavorite(_ item: MenuItem) -> Bool { favoriteIDs.contains(item.id) }
