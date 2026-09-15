@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>تعرّف على منيو</title>
+<meta name="description" content="القائمة تُبنى مرة، والرمز يبقى للأبد.">
+<meta name="theme-color" content="#C67139">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Almarai:wght@400;700;800&family=Figtree:wght@400;600;800&display=swap">
+<style>
+:root{
+  color-scheme:light;
+  --ink:#201E1D; --ink-75:rgba(32,30,29,.75); --ink-55:rgba(32,30,29,.55);
+  --ink-42:rgba(32,30,29,.42); --line:rgba(32,30,29,.12); --hair:rgba(32,30,29,.08);
+  --chip:rgba(32,30,29,.06);
+  --surface:#FFF; --surface-2:#FDF9F3; --cream:#F5EAD8; --cream-deep:#EDDFC8; --cup:#FDF7EE;
+  --terra:#C67139; --terra-deep:#8C491A; --terra-800:#643312;
+  --terra-100:#FFF2EB; --terra-200:#FFE1D0; --terra-300:#FFC6A5; --terra-600:#B2622D; --terra-700:#8C491A;
+  --sage:#7A8A5E; --sage-deep:#56633F; --sage-100:#F0FAE1; --sage-200:#E1EECC;
+  --sage-300:#CCDBB2; --sage-400:#AEBF92; --sage-500:#8FA073; --sage-600:#728157; --sage-700:#56633F;
+  --r:22px; --r-sm:14px; --pill:999px;
+  --ar:'Almarai','Segoe UI',system-ui,sans-serif;
+  --lt:'Figtree','Helvetica Neue',Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html{height:100%}
+body{
+  margin:0;min-height:100%;font-family:var(--ar);color:var(--ink);
+  background:
+    radial-gradient(1200px 680px at 92% -10%, rgba(198,113,57,.16), transparent 60%),
+    radial-gradient(880px 560px at 4% 2%, rgba(122,138,94,.16), transparent 58%),
+    linear-gradient(180deg,#FDF9F3 0%,#F8F1E5 44%,#F5EAD8 100%);
+  padding-inline:20px;-webkit-text-size-adjust:100%;overflow-x:hidden;
+}
+img{max-width:100%}
+[hidden]{display:none!important}
+.wrap{max-width:1160px;margin-inline:auto}
+h1,h2,h3,h4,p{margin:0}
+h1,h2,h3{text-wrap:balance;line-height:1.26}
+
+.code{font-family:var(--lt);font-weight:800;letter-spacing:-.3px;direction:ltr;unicode-bidi:isolate;display:inline-block}
+.chipcode{
+  font-family:var(--lt);font-weight:800;letter-spacing:-.3px;direction:ltr;unicode-bidi:isolate;
+  display:inline-flex;align-items:center;justify-content:center;min-width:44px;padding:5px 9px;
+  border-radius:9px;font-size:14px;line-height:1;background:var(--terra-100);color:var(--terra-deep);
+  border:1px solid var(--terra-200);flex:none;
+}
+.chipcode.sg{background:var(--sage-100);color:var(--sage-deep);border-color:var(--sage-200)}
+
+/* ============ mascot ============ */
+.mascot{display:block}
+.mascot .steam{animation:drift 3.6s ease-in-out infinite}
+.mascot .steam2{animation:drift 3.6s ease-in-out .5s infinite}
+.mascot .wave{transform-origin:96px 70px;animation:wave 2.4s ease-in-out infinite}
+.mascot .eye{transform-origin:center;animation:blink 5.2s infinite}
+.bobbing{animation:bob 3.4s ease-in-out infinite}
+@keyframes drift{0%,100%{opacity:.35;transform:translateY(2px)}50%{opacity:1;transform:translateY(-4px)}}
+@keyframes wave{0%,100%{transform:rotate(0deg)}30%{transform:rotate(-16deg)}60%{transform:rotate(8deg)}}
+@keyframes blink{0%,94%,100%{transform:scaleY(1)}96%{transform:scaleY(.12)}}
+@keyframes bob{0%,100%{transform:translateY(0) rotate(-1.5deg)}50%{transform:translateY(-9px) rotate(1.5deg)}}
+
+/* ============ masthead ============ */
+.masthead{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-block:22px 4px}
+.brand{display:flex;align-items:center;gap:11px}
+.brand .word{font-family:var(--lt);font-weight:800;font-size:22px;letter-spacing:-.6px;direction:ltr;unicode-bidi:isolate}
+.brand .word i{color:var(--terra);font-style:normal}
+.badge{
+  font-size:12.5px;font-weight:700;color:var(--ink-55);background:var(--surface);
+  border:1px solid var(--line);padding:7px 14px;border-radius:var(--pill);
+}
+
+/* ============ hero ============ */
+.hero{display:grid;grid-template-columns:1.05fr .95fr;gap:40px;align-items:center;padding-block:34px 60px}
+.eyebrow{font-size:13px;font-weight:800;letter-spacing:.07em;color:var(--sage-deep);margin-bottom:16px}
+.hero h1{font-size:clamp(36px,5.6vw,66px);font-weight:800;letter-spacing:-.8px;margin-bottom:20px}
+.hero h1 em{font-style:normal;color:var(--terra-deep)}
+.lede{font-size:16.5px;line-height:2.05;color:var(--ink-75);max-width:42ch;margin-bottom:26px}
+.jump{display:flex;flex-wrap:wrap;gap:11px;margin-bottom:28px}
+.btn{
+  font-family:var(--ar);font-size:15px;font-weight:800;padding:14px 26px;border-radius:var(--pill);
+  border:1px solid transparent;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:9px;
+  transition:transform .18s ease,box-shadow .18s ease,background .18s ease,border-color .18s ease;
+}
+.btn-p{background:var(--terra);color:#fff;box-shadow:0 10px 26px rgba(198,113,57,.3)}
+.btn-p:hover{background:var(--terra-deep);transform:translateY(-2px);box-shadow:0 14px 32px rgba(198,113,57,.36)}
+.btn-g{background:var(--surface);color:var(--ink);border-color:var(--line)}
+.btn-g:hover{border-color:var(--ink-42);transform:translateY(-2px)}
+.btn:focus-visible{outline:3px solid var(--terra);outline-offset:3px}
+
+.stats{display:flex;flex-wrap:wrap;gap:12px}
+.stat{
+  flex:1 1 140px;background:var(--surface);border:1px solid var(--hair);border-radius:var(--r-sm);
+  padding:16px 18px;box-shadow:0 2px 12px rgba(32,30,29,.045);
+}
+.stat b{display:block;font-family:var(--lt);font-weight:800;font-size:27px;line-height:1.1;margin-bottom:6px}
+.stat b.c{color:var(--terra-deep);letter-spacing:-.5px;direction:ltr;unicode-bidi:isolate}
+.stat small{font-size:12.5px;color:var(--ink-55);line-height:1.65;display:block}
+
+.stage{position:relative;display:grid;place-items:center;padding-block:10px}
+.halo{
+  position:absolute;width:min(360px,80%);aspect-ratio:1;border-radius:50%;
+  background:radial-gradient(circle,rgba(198,113,57,.16),transparent 66%);
+}
+.floaty{
+  position:absolute;background:var(--surface);border:1px solid var(--hair);border-radius:var(--pill);
+  padding:9px 16px;font-size:12.5px;font-weight:800;box-shadow:0 10px 24px rgba(32,30,29,.1);
+}
+.floaty.f1{inset-block-start:4%;inset-inline-end:2%;color:var(--sage-deep)}
+.floaty.f2{inset-block-start:44%;inset-inline-start:-2%;color:var(--terra-deep)}
+.floaty.f3{inset-block-end:6%;inset-inline-end:8%;color:var(--ink-55)}
+
+/* ============ sections ============ */
+section{padding-block:58px}
+.head{margin-bottom:34px;max-width:54ch}
+.head h2{font-size:clamp(26px,3.6vw,40px);font-weight:800;letter-spacing:-.5px;margin-bottom:12px}
+.head p{font-size:15.5px;color:var(--ink-55);line-height:1.95}
+
+/* ============ code forge ============ */
+.forge{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start}
+.panel{background:var(--surface);border:1px solid var(--hair);border-radius:var(--r);padding:26px;box-shadow:0 8px 28px rgba(32,30,29,.06)}
+.panel h3{font-size:17px;font-weight:800;margin-bottom:16px}
+.field{margin-bottom:16px}
+.field label{display:block;font-size:12.5px;font-weight:800;color:var(--ink-55);margin-bottom:8px}
+.cats{display:flex;gap:8px;flex-wrap:wrap}
+.cat{
+  font-family:var(--ar);font-size:13px;font-weight:800;padding:10px 15px;border-radius:12px;cursor:pointer;
+  background:var(--surface-2);border:1px solid var(--line);color:var(--ink-55);
+  display:inline-flex;align-items:center;gap:8px;transition:all .16s ease;
+}
+.cat:hover{border-color:var(--ink-42)}
+.cat b{font-family:var(--lt);font-weight:800;font-size:14px}
+.cat[aria-pressed="true"]{background:var(--sage);border-color:var(--sage);color:#fff}
+.cat:focus-visible{outline:2px solid var(--terra);outline-offset:2px}
+.inp{
+  width:100%;font-family:var(--ar);font-size:14.5px;padding:13px 15px;border-radius:12px;
+  border:1px solid var(--line);background:var(--surface-2);color:var(--ink);
+}
+.inp:focus{outline:none;border-color:var(--sage);background:var(--surface)}
+.inp.num{font-family:var(--lt);font-weight:700;direction:ltr;text-align:start}
+.two{display:grid;grid-template-columns:1fr 110px;gap:10px}
+
+.forged{
+  background:linear-gradient(160deg,var(--terra-100),var(--surface));
+  border:1px solid var(--terra-200);border-radius:18px;padding:24px;text-align:center;margin-bottom:16px;
+}
+.forged .lbl{font-size:12px;font-weight:800;color:var(--terra-deep);margin-bottom:12px;letter-spacing:.05em}
+.forged .big{
+  font-family:var(--lt);font-weight:800;font-size:54px;line-height:1;letter-spacing:-2px;
+  color:var(--terra-deep);direction:ltr;unicode-bidi:isolate;display:flex;justify-content:center;gap:2px;
+}
+.forged .big span{display:inline-block}
+.forged .big .l{color:var(--sage-deep)}
+.pop{animation:pop .34s cubic-bezier(.34,1.56,.64,1)}
+@keyframes pop{0%{transform:scale(.6);opacity:0}100%{transform:scale(1);opacity:1}}
+.forged .note{font-size:12.5px;color:var(--ink-55);margin-top:12px;line-height:1.7}
+
+.built{display:flex;flex-direction:column;gap:0}
+.built-empty{font-size:13px;color:var(--ink-42);padding:22px 4px;text-align:center;line-height:1.9}
+.irow{display:flex;align-items:center;gap:10px;padding:11px 4px;border-bottom:1px solid var(--hair)}
+.irow:last-child{border-bottom:0}
+.irow .m{flex:1;min-width:0}
+.irow .m b{display:block;font-size:13.5px;font-weight:700;margin-bottom:2px}
+.irow .m small{font-size:11.5px;color:var(--ink-42)}
+.sar{font-family:var(--lt);font-weight:800;font-size:13px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.mini{
+  font-family:var(--ar);font-size:11px;font-weight:800;padding:5px 10px;border-radius:var(--pill);
+  border:1px solid var(--line);background:var(--surface);color:var(--ink-55);cursor:pointer;transition:all .15s ease;
+}
+.mini:hover{border-color:var(--terra);color:var(--terra-deep)}
+.mini:focus-visible{outline:2px solid var(--terra);outline-offset:2px}
+
+/* ============ live phone ============ */
+.live{display:grid;grid-template-columns:1fr auto;gap:40px;align-items:center}
+.live-copy{max-width:46ch}
+.roleinfo{display:flex;flex-direction:column;gap:12px;margin-top:22px}
+.ri{display:flex;gap:13px;align-items:flex-start;padding:15px 17px;background:var(--surface);border:1px solid var(--hair);border-radius:16px;position:relative}
+.ri i.rail{position:absolute;inset-inline-start:0;inset-block:13px;width:3px;border-radius:3px}
+.ri.c i.rail{background:var(--terra)} .ri.m i.rail{background:var(--sage)} .ri.a i.rail{background:var(--ink)}
+.ri .g{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;font-size:16px;flex:none}
+.ri.c .g{background:var(--terra-100)} .ri.m .g{background:var(--sage-100)} .ri.a .g{background:var(--chip)}
+.ri b{display:block;font-size:14.5px;font-weight:800;margin-bottom:3px}
+.ri small{font-size:12.5px;color:var(--ink-55);line-height:1.75}
+
+.device{display:flex;flex-direction:column;align-items:center;gap:13px}
+.tabs{display:flex;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:var(--pill);padding:4px;width:100%;max-width:306px}
+.tabs button{flex:1;font-family:var(--ar);font-size:13px;font-weight:800;padding:9px 6px;border:0;border-radius:var(--pill);background:transparent;color:var(--ink-55);cursor:pointer;transition:all .18s ease}
+.tabs button:hover{color:var(--ink)}
+.tabs button[aria-pressed="true"]{color:#fff}
+.tabs button[data-r="c"][aria-pressed="true"]{background:var(--terra)}
+.tabs button[data-r="m"][aria-pressed="true"]{background:var(--sage)}
+.tabs button[data-r="a"][aria-pressed="true"]{background:var(--ink)}
+.tabs button:focus-visible{outline:2px solid var(--terra);outline-offset:1px}
+
+.phone{width:306px;max-width:100%;background:var(--ink);border-radius:40px;padding:9px;box-shadow:0 30px 60px rgba(32,30,29,.24)}
+.screen{background:var(--surface);border-radius:32px;overflow:hidden;padding:14px 12px 16px;min-height:436px;display:flex;flex-direction:column}
+.sbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px;padding-inline:4px}
+.sbar .w{font-family:var(--lt);font-weight:800;font-size:15px;direction:ltr;unicode-bidi:isolate}
+.sbar .w i{color:var(--terra);font-style:normal}
+.langsw{font-family:var(--lt);font-size:10.5px;font-weight:800;border:1px solid var(--line);background:var(--surface);color:var(--ink-55);border-radius:var(--pill);padding:4px 9px;cursor:pointer}
+.langsw:hover{border-color:var(--terra);color:var(--terra-deep)}
+.langsw:focus-visible{outline:2px solid var(--terra);outline-offset:2px}
+
+.find{display:flex;align-items:center;gap:8px;background:var(--chip);border-radius:var(--pill);padding:3px 14px;margin-bottom:10px}
+.find input{flex:1;min-width:0;border:0;background:transparent;font-family:var(--ar);font-size:13px;color:var(--ink);padding:9px 0}
+.find input:focus{outline:none}
+.find .mg{color:var(--ink-42);flex:none;font-size:13px}
+.strip{font-size:11.5px;line-height:1.65;padding:10px 12px;border-radius:12px;margin-bottom:10px;background:var(--terra-100);color:var(--terra-deep);border:1px solid var(--terra-200);display:flex;justify-content:space-between;gap:8px;align-items:center}
+.strip.sg{background:var(--sage-100);color:var(--sage-deep);border-color:var(--sage-200)}
+.open{font-size:10px;font-weight:800;padding:3px 8px;border-radius:var(--pill);background:var(--sage);color:#fff;flex:none}
+.body{flex:1}
+.tap{font-size:10px;font-weight:700;padding:4px 9px;border-radius:var(--pill);border:0;font-family:var(--ar)}
+.tap.ok{background:var(--sage-100);color:var(--sage-deep)}
+.tap.no{background:var(--chip);color:var(--ink-42)}
+button.tap{cursor:pointer}
+button.tap:hover{filter:brightness(.95)}
+button.tap:focus-visible{outline:2px solid var(--terra);outline-offset:2px}
+.hrt{border:0;background:transparent;cursor:pointer;font-size:15px;line-height:1;padding:3px;color:var(--ink-42);transition:color .15s,transform .15s}
+.hrt[aria-pressed="true"]{color:var(--terra)}
+.hrt:hover{transform:scale(1.16)}
+.hrt:focus-visible{outline:2px solid var(--terra);outline-offset:2px}
+.none{flex:1;display:grid;place-items:center;text-align:center;padding:26px 18px}
+.none b{display:block;font-size:14px;color:var(--ink-55);margin-bottom:7px;font-weight:800}
+.none span{font-size:12.5px;color:var(--ink-42);line-height:1.9}
+.tri{display:flex;gap:7px;margin-bottom:11px}
+.tri div{flex:1;background:var(--surface-2);border:1px solid var(--hair);border-radius:11px;padding:9px 8px;text-align:center}
+.tri b{display:block;font-family:var(--lt);font-weight:800;font-size:17px;line-height:1.2}
+.tri small{font-size:9.5px;color:var(--ink-42);display:block;margin-top:2px}
+.hint{display:flex;align-items:center;gap:13px;font-size:12px;color:var(--ink-42)}
+.reset{border:0;background:transparent;font-family:var(--ar);font-size:12px;font-weight:800;color:var(--ink-55);cursor:pointer;text-decoration:underline;text-underline-offset:3px;padding:4px}
+.reset:hover{color:var(--ink)}
+
+/* ============ steps ============ */
+.cyc{display:grid;grid-template-columns:.92fr 1.08fr;gap:24px;align-items:start}
+.list{display:flex;flex-direction:column;gap:9px;order:2}
+.st{display:flex;align-items:flex-start;gap:14px;text-align:start;background:var(--surface);border:1px solid var(--hair);border-radius:16px;padding:15px 17px;cursor:pointer;font-family:var(--ar);color:inherit;transition:all .18s ease;position:relative}
+.st:hover{transform:translateX(-4px);border-color:var(--line)}
+.st:focus-visible{outline:3px solid var(--terra);outline-offset:2px}
+.st .n{width:30px;height:30px;border-radius:50%;flex:none;display:grid;place-items:center;font-family:var(--lt);font-weight:800;font-size:13px;background:var(--chip);color:var(--ink-55);transition:all .18s ease}
+.st .t b{display:block;font-size:15px;font-weight:800;margin-bottom:4px}
+.st .t small{font-size:12.5px;color:var(--ink-55);line-height:1.7}
+.st i.rail{position:absolute;inset-inline-start:0;inset-block:14px;width:3px;border-radius:3px;background:transparent;transition:background .18s}
+.st[data-s="m"] i.rail{background:var(--sage-200)}
+.st[data-s="a"] i.rail{background:rgba(32,30,29,.16)}
+.st[data-s="c"] i.rail{background:var(--terra-200)}
+.st[aria-selected="true"]{border-color:var(--sage)} .st[aria-selected="true"] .n{background:var(--sage);color:#fff}
+.st[data-s="a"][aria-selected="true"]{border-color:var(--ink)} .st[data-s="a"][aria-selected="true"] .n{background:var(--ink)}
+.st[data-s="c"][aria-selected="true"]{border-color:var(--terra)} .st[data-s="c"][aria-selected="true"] .n{background:var(--terra)}
+.st[data-s="m"][aria-selected="true"] i.rail{background:var(--sage)}
+.st[data-s="a"][aria-selected="true"] i.rail{background:var(--ink)}
+.st[data-s="c"][aria-selected="true"] i.rail{background:var(--terra)}
+.pv{order:1;position:sticky;top:16px;background:var(--surface);border:1px solid var(--hair);border-radius:var(--r);padding:26px;box-shadow:0 10px 32px rgba(32,30,29,.07)}
+.pv-h{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
+.pv-h h3{font-size:19px;font-weight:800}
+.who{font-size:12px;font-weight:800;padding:5px 12px;border-radius:var(--pill)}
+.who.m{background:var(--sage-100);color:var(--sage-deep)}
+.who.a{background:var(--chip);color:var(--ink-75)}
+.who.c{background:var(--terra-100);color:var(--terra-deep)}
+.pv>p{font-size:14.5px;line-height:2;color:var(--ink-75);margin-block:10px 18px}
+.mock{background:var(--surface-2);border:1px solid var(--hair);border-radius:16px;padding:14px 16px}
+.mock-l{font-size:11.5px;font-weight:800;color:var(--ink-42);margin-bottom:10px}
+.nav{display:flex;align-items:center;gap:10px;margin-top:18px}
+.nb{font-family:var(--ar);font-size:13px;font-weight:800;padding:9px 16px;border-radius:var(--pill);border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.nb:hover:not(:disabled){border-color:var(--ink-42)}
+.nb:disabled{opacity:.38;cursor:default}
+.nb:focus-visible{outline:2px solid var(--terra);outline-offset:2px}
+.bar{flex:1;height:3px;border-radius:3px;background:var(--hair);overflow:hidden}
+.bar i{display:block;height:100%;border-radius:3px;background:var(--sage);transition:width .32s ease}
+
+/* ============ bounds + closing ============ */
+.bounds{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.bd{background:var(--cream);border:1px solid var(--cream-deep);border-radius:18px;padding:23px}
+.bd h4{font-size:16.5px;font-weight:800;color:var(--terra-deep);margin-bottom:9px}
+.bd p{font-size:13.8px;line-height:1.95;color:var(--ink-75)}
+.end{background:var(--surface);border:1px solid var(--hair);border-radius:28px;padding:52px 30px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:16px;box-shadow:0 14px 40px rgba(32,30,29,.07);margin-block:52px}
+.end h2{font-size:clamp(25px,3.6vw,36px);font-weight:800;letter-spacing:-.5px}
+.end>p{font-size:15px;color:var(--ink-55);line-height:1.9;max-width:48ch}
+.ask{margin-top:10px;background:var(--surface-2);border:1px dashed var(--line);border-radius:18px;padding:24px;text-align:start;max-width:580px;width:100%}
+.ask b{display:block;font-size:14.5px;font-weight:800;margin-bottom:13px}
+.ask ol{margin:0;padding-inline-start:20px;display:flex;flex-direction:column;gap:10px}
+.ask li{font-size:14px;line-height:1.85;color:var(--ink-75)}
+.foot{padding-block:0 40px;text-align:center;font-size:12.5px;color:var(--ink-42);line-height:1.9}
+
+.toast{position:fixed;inset-block-end:calc(env(safe-area-inset-bottom,0px) + 22px);inset-inline:0;margin-inline:auto;width:max-content;max-width:88vw;background:var(--ink);color:#fff;font-size:13px;font-weight:700;padding:13px 24px;border-radius:var(--pill);box-shadow:0 12px 34px rgba(32,30,29,.32);opacity:0;transform:translateY(12px);transition:opacity .24s,transform .24s;pointer-events:none;z-index:60}
+.toast.on{opacity:1;transform:translateY(0)}
+
+@media (max-width:920px){
+  .hero{grid-template-columns:1fr;gap:28px;padding-block:20px 42px}
+  .stage{order:-1}
+  .floaty{display:none}
+  .forge,.bounds{grid-template-columns:1fr}
+  .live{grid-template-columns:1fr;gap:28px}
+  .cyc{grid-template-columns:1fr}
+  .pv{position:static;order:2}
+  .list{order:1}
+}
+@media (max-width:420px){
+  body{padding-inline:16px}
+  .end{padding:38px 20px;border-radius:22px}
+  .two{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="masthead">
+  <div class="brand">
+    <svg class="mascot" width="30" height="35" viewBox="0 0 120 142" aria-hidden="true">
+      <ellipse cx="60" cy="34" rx="40" ry="10" fill="#C67139"/>
+      <ellipse cx="60" cy="27" rx="27" ry="7.5" fill="#B2622D"/>
+      <path d="M24 44h72l-9 70a14 14 0 0 1-14 12H47a14 14 0 0 1-14-12z" fill="#FDF7EE" stroke="#FFC6A5" stroke-width="2.5"/>
+      <ellipse cx="50" cy="62" rx="4.6" ry="5.8" fill="#201E1D"/>
+      <ellipse cx="71" cy="62" rx="4.6" ry="5.8" fill="#201E1D"/>
+      <path d="M52 74q8.5 7.5 17 0" fill="none" stroke="#201E1D" stroke-width="3.2" stroke-linecap="round"/>
+      <rect x="29" y="88" width="62" height="24" rx="7" fill="#FFE1D0"/>
+      <text x="60" y="105" text-anchor="middle" fill="#643312" font-size="14" font-weight="800" font-family="Figtree, sans-serif" letter-spacing="1.5">A01</text>
+    </svg>
+    <span class="word">menu<i>.</i></span>
+  </div>
+  <div class="badge">عرض تعريفي · بيانات اصطناعية</div>
+</header>
+
+<!-- HERO -->
+<section class="hero">
+  <div>
+    <div class="eyebrow">قوائم المطاعم والمقاهي</div>
+    <h1>القائمة تُبنى مرة،<br><em>والرمز يبقى للأبد.</em></h1>
+    <p class="lede">
+      كل منتج في منيو يحمل رمزًا ثابتًا يختصر الطلب: تقول
+      <span class="code" style="color:var(--terra-deep)">A01</span>
+      بدل الاسم الطويل. التاجر يبني قائمته، والإدارة تعتمدها، والزبون يبحث بالرمز —
+      بلا حساب، وبلا سلة، وبلا إعادة طباعة.
+    </p>
+    <div class="jump">
+      <a class="btn btn-p" href="#forge">جرّب توليد الرمز</a>
+      <a class="btn btn-g" href="#live">شاهد الشاشات الثلاث</a>
+    </div>
+    <div class="stats">
+      <div class="stat"><b>0</b><small>حساب مطلوب لتصفّح القوائم</small></div>
+      <div class="stat"><b>2</b><small>لغتان كاملتان: عربي وإنجليزي</small></div>
+      <div class="stat"><b class="c">A01</b><small>رمز ثابت لا يتغيّر مع الاسم ولا السعر</small></div>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="halo"></div>
+    <div class="floaty f1">مفتوح الآن</div>
+    <div class="floaty f2">رمز ثابت</div>
+    <div class="floaty f3">بانتظار الاعتماد</div>
+    <svg class="mascot bobbing" width="228" height="270" viewBox="0 0 120 142" role="img" aria-label="شعار منيو — فنجان يحمل بطاقة الرمز A01">
+      <path class="steam" d="M47 16q7-6 0-13" fill="none" stroke="#8FA073" stroke-width="4.5" stroke-linecap="round"/>
+      <path class="steam2" d="M64 18q8-7 0-15" fill="none" stroke="#AEBF92" stroke-width="4.5" stroke-linecap="round"/>
+      <path d="M20 74q-13 5-10 20" fill="none" stroke="#8C491A" stroke-width="7" stroke-linecap="round"/>
+      <g class="wave">
+        <path d="M96 70q15-5 16-19" fill="none" stroke="#8C491A" stroke-width="7" stroke-linecap="round"/>
+        <circle cx="112" cy="48" r="6" fill="#8C491A"/>
+      </g>
+      <ellipse cx="60" cy="34" rx="40" ry="10" fill="#C67139"/>
+      <ellipse cx="60" cy="27" rx="27" ry="7.5" fill="#B2622D"/>
+      <path d="M24 44h72l-9 70a14 14 0 0 1-14 12H47a14 14 0 0 1-14-12z" fill="#FDF7EE" stroke="#FFC6A5" stroke-width="2.5"/>
+      <circle cx="41" cy="72" r="5.5" fill="#FFC6A5" opacity=".75"/>
+      <circle cx="79" cy="72" r="5.5" fill="#FFC6A5" opacity=".75"/>
+      <ellipse class="eye" cx="50" cy="62" rx="4.6" ry="5.8" fill="#201E1D"/>
+      <ellipse class="eye" cx="71" cy="62" rx="4.6" ry="5.8" fill="#201E1D"/>
+      <path d="M52 74q8.5 7.5 17 0" fill="none" stroke="#201E1D" stroke-width="3.2" stroke-linecap="round"/>
+      <rect x="29" y="88" width="62" height="24" rx="7" fill="#FFE1D0"/>
+      <text x="60" y="105" text-anchor="middle" fill="#643312" font-size="14" font-weight="800" font-family="Figtree, sans-serif" letter-spacing="1.5">A01</text>
+    </svg>
+  </div>
+</section>
+
+<!-- CODE FORGE -->
+<section id="forge">
+  <div class="head">
+    <h2>الرمز لا يُكتب — يُولد</h2>
+    <p>اختر تصنيفًا واكتب اسم منتج، وشاهد الرمز وهو يتكوّن من حرف التصنيف مع أول رقم متاح. جرّب بعدها أن تغيّر الاسم أو السعر — الرمز لا يتحرك.</p>
+  </div>
+  <div class="forge">
+    <div class="panel">
+      <h3>أضف منتجًا</h3>
+      <div class="field">
+        <label>التصنيف</label>
+        <div class="cats" id="cats"></div>
+      </div>
+      <div class="field">
+        <label for="iname">اسم المنتج</label>
+        <div class="two">
+          <input class="inp" id="iname" type="text" placeholder="مثال: قهوة مختصة" value="قهوة مختصة">
+          <input class="inp num" id="iprice" type="number" min="1" max="999" value="18" aria-label="السعر بالريال">
+        </div>
+      </div>
+      <button class="btn btn-p" id="add" type="button" style="width:100%;justify-content:center">أضف المنتج</button>
+    </div>
+
+    <div>
+      <div class="forged">
+        <div class="lbl">الرمز الذي سيُمنح</div>
+        <div class="big" id="big"><span class="l">A</span><span>0</span><span>1</span></div>
+        <div class="note" id="fnote">حرف التصنيف «A» مع أول رقم متاح فيه.</div>
+      </div>
+      <div class="panel" style="padding:20px 22px">
+        <h3 style="margin-bottom:10px">قائمة المتجر</h3>
+        <div class="built" id="built"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- LIVE DEMO -->
+<section id="live">
+  <div class="head">
+    <h2>ثلاث شاشات لثلاثة أدوار</h2>
+    <p>بدّل بين الأدوار وشاهد أثر كل واحد على الآخر: اعتمد المتجر كإدارة فيظهر للزبون، وعلّم منتجًا «نفذ» كتاجر فيراه الزبون في اللحظة نفسها.</p>
+  </div>
+  <div class="live">
+    <div class="live-copy">
+      <div class="roleinfo">
+        <div class="ri c"><i class="rail"></i><div class="g">🔎</div><div><b>الزبون</b><small>يتصفّح المطاعم القريبة، أو يكتب رمز المنتج فيصل إليه مباشرة. يحفظ ما أعجبه، ويشارك المنيو برابط. بلا تسجيل.</small></div></div>
+        <div class="ri m"><i class="rail"></i><div class="g">🏪</div><div><b>التاجر</b><small>يضيف تصنيفاته ومنتجاته وصورها وساعات عمله، والرموز تُنشأ وحدها. يغيّر السعر ويعلّم «نفذ» بضغطة.</small></div></div>
+        <div class="ri a"><i class="rail"></i><div class="g">🛡️</div><div><b>الإدارة</b><small>ترى الطلبات الجديدة وتعتمد أو ترفض. لا يظهر أي متجر للعملاء قبل اعتماده.</small></div></div>
+      </div>
+    </div>
+
+    <div class="device">
+      <div class="tabs" role="group" aria-label="اختر الدور">
+        <button type="button" data-r="c" aria-pressed="true">الزبون</button>
+        <button type="button" data-r="m" aria-pressed="false">التاجر</button>
+        <button type="button" data-r="a" aria-pressed="false">الإدارة</button>
+      </div>
+      <div class="phone">
+        <div class="screen">
+          <div class="sbar">
+            <span class="w">menu<i>.</i></span>
+            <button class="langsw" id="lang" type="button">English</button>
+          </div>
+          <div id="stage"></div>
+        </div>
+      </div>
+      <div class="hint">
+        <span id="hint"></span>
+        <button class="reset" id="reset" type="button">أعد الضبط</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CYCLE -->
+<section>
+  <div class="head">
+    <h2>الدورة كاملة — من أول تصنيف إلى أول بحث</h2>
+    <p>سبع خطوات بالترتيب. لون كل خطوة يقول مَن يقوم بها: التاجر، أم الإدارة، أم الزبون.</p>
+  </div>
+  <div class="cyc">
+    <div class="pv" id="pv" aria-live="polite">
+      <div class="pv-h"><h3 id="pvT"></h3><span class="who m" id="pvW"></span></div>
+      <p id="pvB"></p>
+      <div class="mock"><div class="mock-l" id="pvL"></div><div id="pvM"></div></div>
+      <div class="nav">
+        <button class="nb" id="prev" type="button">السابق</button>
+        <div class="bar"><i id="barI"></i></div>
+        <button class="nb" id="next" type="button">التالي</button>
+      </div>
+    </div>
+    <div class="list" role="tablist" aria-label="خطوات الدورة"></div>
+  </div>
+</section>
+
+<!-- BOUNDS -->
+<section>
+  <div class="head">
+    <h2>ما لا يفعله منيو — عن قصد</h2>
+    <p>حدود المنتج واضحة، وهي جزء من التصميم لا نقص فيه.</p>
+  </div>
+  <div class="bounds">
+    <div class="bd"><h4>لا طلبات ولا دفع</h4><p>منيو يعرض القائمة فقط. لا سلّة ولا فواتير ولا تحصيل — الطلب يتم مع المطعم كما هو معتاد.</p></div>
+    <div class="bd"><h4>لا نشر بلا اعتماد</h4><p>كل متجر جديد يمرّ بمراجعة بشرية قبل أن يراه أي عميل. القرار يتخذه إنسان، لا قاعدة آلية.</p></div>
+    <div class="bd"><h4>لا رمز يتغيّر</h4><p>الرمز يُولد مرة واحدة من حرف التصنيف وأول رقم متاح، ويبقى ثابتًا حتى لو تغيّر اسم المنتج أو سعره.</p></div>
+  </div>
+</section>
+
+<section class="end">
+  <svg class="mascot" width="72" height="85" viewBox="0 0 120 142" aria-hidden="true">
+    <ellipse cx="60" cy="34" rx="40" ry="10" fill="#7A8A5E"/>
+    <ellipse cx="60" cy="27" rx="27" ry="7.5" fill="#728157"/>
+    <path d="M24 44h72l-9 70a14 14 0 0 1-14 12H47a14 14 0 0 1-14-12z" fill="#FDF7EE" stroke="#CCDBB2" stroke-width="2.5"/>
+    <ellipse class="eye" cx="50" cy="62" rx="4.6" ry="5.8" fill="#201E1D"/>
+    <ellipse class="eye" cx="71" cy="62" rx="4.6" ry="5.8" fill="#201E1D"/>
+    <path d="M52 74q8.5 7.5 17 0" fill="none" stroke="#201E1D" stroke-width="3.2" stroke-linecap="round"/>
+    <rect x="29" y="88" width="62" height="24" rx="7" fill="#E1EECC"/>
+    <path d="M38 96h44M38 104h30" stroke="#56633F" stroke-width="3" stroke-linecap="round"/>
+  </svg>
+  <h2>وبعد أن تجرّبه</h2>
+  <p>لا نحتاج تقريرًا. ثلاث نقاط من كل واحد تكفي لنعرف أين نقف.</p>
+  <div class="ask">
+    <b>اكتب ثلاث نقاط فقط:</b>
+    <ol>
+      <li>أين توقّفت أو احتجت أن تسأل؟</li>
+      <li>ما الشيء الذي كان المفروض يصير وحده ولم يحدث؟</li>
+      <li>هل يفهمه صاحب مطعم بلا شرح منّا؟</li>
+    </ol>
+  </div>
+</section>
+
+<div class="foot">جميع البيانات المعروضة في هذه الصفحة اصطناعية، وليست لمطعم حقيقي.</div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/* ---------------- toast ---------------- */
+const toastEl=document.getElementById('toast');let tt;
+function toast(m){toastEl.textContent=m;toastEl.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>toastEl.classList.remove('on'),2700);}
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ---------------- code forge ---------------- */
+const CATS=[{l:'A',n:'مشروبات ساخنة'},{l:'B',n:'حلويات'},{l:'C',n:'مشروبات باردة'}];
+const SEED_F=()=>({A:[{n:'قهوة مختصة',p:18,num:1},{n:'كابتشينو',p:16,num:2}],B:[{n:'كيك التمر',p:26,num:1}],C:[]});
+let F=SEED_F(), cat='A';
+
+const catsEl=document.getElementById('cats'),bigEl=document.getElementById('big'),
+      fnote=document.getElementById('fnote'),builtEl=document.getElementById('built'),
+      nameEl=document.getElementById('iname'),priceEl=document.getElementById('iprice');
+
+CATS.forEach(c=>{
+  const b=document.createElement('button');
+  b.className='cat';b.type='button';b.dataset.l=c.l;
+  b.setAttribute('aria-pressed',c.l===cat);
+  b.innerHTML='<b></b><span></span>';
+  b.querySelector('b').textContent=c.l;
+  b.querySelector('span').textContent=c.n;
+  b.addEventListener('click',()=>{cat=c.l;drawForge();});
+  catsEl.appendChild(b);
+});
+
+const nextNum=l=>{const used=new Set(F[l].map(i=>i.num));let n=1;while(used.has(n))n++;return n;};
+const pad=n=>String(n).padStart(2,'0');
+
+function drawForge(pop){
+  document.querySelectorAll('.cat').forEach(b=>b.setAttribute('aria-pressed',b.dataset.l===cat));
+  const n=nextNum(cat),s=pad(n);
+  bigEl.innerHTML='<span class="l">'+cat+'</span><span>'+s[0]+'</span><span>'+s[1]+'</span>';
+  if(pop)[...bigEl.children].forEach((el,i)=>{el.classList.add('pop');el.style.animationDelay=(i*60)+'ms';});
+  const taken=F[cat].map(i=>cat+pad(i.num)).join('، ');
+  fnote.textContent=taken
+    ? 'المأخوذ في هذا التصنيف: '+taken+' — فأول رقم متاح هو '+s+'.'
+    : 'لا يوجد منتج في هذا التصنيف بعد، فالرقم يبدأ من 01.';
+
+  const all=CATS.flatMap(c=>F[c.l].map(i=>({...i,l:c.l,cn:c.n}))).sort((a,b)=>(a.l+pad(a.num)).localeCompare(b.l+pad(b.num)));
+  builtEl.innerHTML=all.length?all.map(i=>`
+    <div class="irow">
+      <span class="chipcode">${i.l}${pad(i.num)}</span>
+      <div class="m"><b>${esc(i.n)}</b><small>${esc(i.cn)}</small></div>
+      <span class="sar">${i.p}</span>
+      <button class="mini" data-ren="${i.l}${i.num}">غيّر الاسم</button>
+    </div>`).join('')
+    :'<div class="built-empty">لا يوجد منتج بعد.<br>اختر تصنيفًا وأضف أول منتج.</div>';
+}
+
+document.getElementById('add').addEventListener('click',()=>{
+  const n=(nameEl.value||'').trim();
+  if(!n){toast('اكتب اسم المنتج أولًا');nameEl.focus();return;}
+  const p=Math.max(1,Math.min(999,parseInt(priceEl.value,10)||1));
+  const num=nextNum(cat);
+  F[cat].push({n,p,num});
+  toast('أُضيف «'+n+'» بالرمز '+cat+pad(num));
+  nameEl.value='';priceEl.value=String(p);
+  drawForge(true);
+});
+nameEl.addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('add').click();});
+
+const RENAMES=['لاتيه بالهيل','موكا مثلجة','كيك الجزر','شاي كرك','براوني','ليموناضة'];
+builtEl.addEventListener('click',e=>{
+  const b=e.target.closest('[data-ren]');if(!b)return;
+  const key=b.dataset.ren,l=key[0],num=parseInt(key.slice(1),10);
+  const it=F[l].find(i=>i.num===num);
+  it.n=RENAMES[Math.floor(Math.random()*RENAMES.length)];
+  it.p=it.p+Math.floor(Math.random()*6)-2;
+  drawForge();
+  toast('تغيّر الاسم والسعر — والرمز '+l+pad(num)+' كما هو');
+});
+
+/* ---------------- live phone ---------------- */
+const T={
+  ar:{who:{c:'الزبون',m:'التاجر',a:'الإدارة'},find:'ابحث بالرمز أو الاسم... مثال A01',
+      shop:'مقهى الحيّ',type:'مقهى',open:'مفتوح الآن',near:'قريب منك',items:'منتجات',
+      noneT:'لا توجد مطاعم بعد',noneB:'«مقهى الحيّ» ما زال تحت المراجعة.<br>بدّل لدور الإدارة واعتمده أولًا.',
+      nrT:'لا توجد نتائج',nrB:'جرّب حرف التصنيف مع الرقم، مثل A02.',
+      out:'نفذ',ok:'متوفر',review:'طلبك قيد مراجعة الإدارة. يمكنك تجهيز قائمتك الآن، وتُنشر للعملاء فور الاعتماد.',
+      total:'إجمالي المنتجات',oos:'نفذت الكمية',cats:'التصنيفات',
+      newReq:'طلب جديد',live:'مطعم منشور',prod:'منتج',
+      hold:'لا يظهر المطعم للعملاء إلا بعد اعتماده.',noReq:'لا توجد طلبات جديدة حاليًا.',
+      approve:'اعتماد',reject:'رفض',published:'منشور',sar:'ر.س'},
+  en:{who:{c:'Customer',m:'Merchant',a:'Admin'},find:'Search by code or name... e.g. A01',
+      shop:'Neighborhood Café',type:'Café',open:'Open Now',near:'Near You',items:'items',
+      noneT:'No restaurants yet',noneB:'“Neighborhood Café” is still under review.<br>Switch to Admin and approve it first.',
+      nrT:'No Results',nrB:'Try the category letter with a number, like A02.',
+      out:'Out',ok:'Available',review:'Your request is under admin review. You can prepare your menu now — it publishes the moment it is approved.',
+      total:'Total Items',oos:'Out of Stock',cats:'Categories',
+      newReq:'New Requests',live:'Live Stores',prod:'Items',
+      hold:'A restaurant stays hidden from customers until it is approved.',noReq:'No new requests right now.',
+      approve:'Approve',reject:'Reject',published:'Live',sar:'SAR'}
+};
+const SEED_L=()=>({role:'c',lang:'ar',approved:false,q:'',favs:new Set(),items:[
+  {c:'A01',ar:'قهوة مختصة',en:'Specialty Coffee',catAr:'مشروبات ساخنة',catEn:'Hot Drinks',p:18,av:true},
+  {c:'A02',ar:'كابتشينو',en:'Cappuccino',catAr:'مشروبات ساخنة',catEn:'Hot Drinks',p:16,av:true},
+  {c:'A03',ar:'شاي أخضر بالنعناع',en:'Green Mint Tea',catAr:'مشروبات ساخنة',catEn:'Hot Drinks',p:12,av:true},
+  {c:'B01',ar:'كيك التمر',en:'Date Cake',catAr:'حلويات',catEn:'Desserts',p:26,av:true},
+  {c:'B02',ar:'تشيز كيك الفستق',en:'Pistachio Cheesecake',catAr:'حلويات',catEn:'Desserts',p:29,av:false},
+  {c:'C01',ar:'آيس لاتيه',en:'Iced Latte',catAr:'مشروبات باردة',catEn:'Cold Drinks',p:21,av:true}
+]});
+let L=SEED_L();
+const stage=document.getElementById('stage'),hintEl=document.getElementById('hint'),langBtn=document.getElementById('lang');
+const HINTS={c:'ابحث برمز مثل A01، واضغط ♡ للحفظ',m:'اضغط «متوفر» لتعلّمه «نفذ»',a:'اعتمد المتجر وشاهد أثره عند الزبون'};
+
+const t=()=>T[L.lang];
+const nm=i=>L.lang==='ar'?i.ar:i.en;
+const cn=i=>L.lang==='ar'?i.catAr:i.catEn;
+
+function row(i,role){
+  const tr=t();
+  const price=`<span class="sar">${i.p}</span>`;
+  const tail=role==='c'
+    ? (i.av?`<button class="hrt" data-f="${i.c}" aria-pressed="${L.favs.has(i.c)}" aria-label="حفظ">${L.favs.has(i.c)?'♥':'♡'}</button>`
+           :`<span class="tap no">${tr.out}</span>`)
+    : `<button class="tap ${i.av?'ok':'no'}" data-t="${i.c}">${i.av?tr.ok:tr.out}</button>`;
+  return `<div class="irow"><span class="chipcode${role==='m'?' sg':''}">${i.c}</span>
+    <div class="m"><b>${esc(nm(i))}</b><small>${esc(cn(i))}</small></div>${price}${tail}</div>`;
+}
+
+function draw(){
+  const tr=t();
+  document.querySelectorAll('.tabs button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.r===L.role));
+  hintEl.textContent=HINTS[L.role];
+  langBtn.textContent=L.lang==='ar'?'English':'العربية';
+  document.getElementById('stage').dir=L.lang==='ar'?'rtl':'ltr';
+
+  if(L.role==='c'){
+    if(!L.approved){
+      stage.innerHTML=`<div class="find"><span class="mg">⌕</span><input disabled placeholder="${esc(tr.find)}"></div>
+        <div class="none"><div><b>${tr.noneT}</b><span>${tr.noneB}</span></div></div>`;return;
+    }
+    const q=L.q.trim().toLowerCase();
+    const hits=L.items.filter(i=>!q||i.c.toLowerCase().includes(q)||nm(i).toLowerCase().includes(q));
+    stage.innerHTML=`<div class="find"><span class="mg">⌕</span><input id="q" type="search" placeholder="${esc(tr.find)}" value="${esc(L.q)}"></div>
+      <div class="strip sg"><span>${tr.shop} · ${L.items.length} ${tr.items} · ${tr.near}</span><span class="open">${tr.open}</span></div>
+      <div class="body">${hits.length?hits.map(i=>row(i,'c')).join('')
+        :`<div class="none"><div><b>${tr.nrT}</b><span>${tr.nrB}</span></div></div>`}</div>`;
+    const qe=document.getElementById('q');
+    qe.addEventListener('input',e=>{L.q=e.target.value;draw();document.getElementById('q').focus();});
+    return;
+  }
+  if(L.role==='m'){
+    const oos=L.items.filter(i=>!i.av).length;
+    stage.innerHTML=`${L.approved?'':`<div class="strip">${tr.review}</div>`}
+      <div class="tri"><div><b>${L.items.length}</b><small>${tr.total}</small></div>
+      <div><b>${oos}</b><small>${tr.oos}</small></div><div><b>3</b><small>${tr.cats}</small></div></div>
+      <div class="body">${L.items.map(i=>row(i,'m')).join('')}</div>`;
+    return;
+  }
+  stage.innerHTML=`<div class="tri"><div><b>${L.approved?0:1}</b><small>${tr.newReq}</small></div>
+    <div><b>${L.approved?1:0}</b><small>${tr.live}</small></div>
+    <div><b>${L.items.length}</b><small>${tr.prod}</small></div></div>
+    ${L.approved
+      ? `<div class="strip sg">${tr.noReq}</div><div class="body"><div class="irow">
+         <div class="m"><b>${tr.shop}</b><small>${tr.type} · ${L.items.length} ${tr.items}</small></div>
+         <span class="tap ok">${tr.published}</span></div></div>`
+      : `<div class="strip">${tr.hold}</div><div class="body"><div class="irow">
+         <div class="m"><b>${tr.shop}</b><small>${tr.type} · ${L.items.length} ${tr.items}</small></div>
+         <button class="tap ok" data-ap="1">${tr.approve}</button>
+         <button class="tap no" data-rj="1">${tr.reject}</button></div></div>`}`;
+}
+
+stage.addEventListener('click',e=>{
+  const f=e.target.closest('[data-f]');
+  if(f){const c=f.dataset.f;L.favs.has(c)?L.favs.delete(c):L.favs.add(c);
+    toast(L.favs.has(c)?'أُضيف '+c+' إلى المفضلة':'أُزيل '+c+' من المفضلة');draw();return;}
+  const g=e.target.closest('[data-t]');
+  if(g){const i=L.items.find(x=>x.c===g.dataset.t);i.av=!i.av;
+    toast(i.av?i.c+' عاد متوفرًا — الرمز نفسه':i.c+' نفذ — يظهر للزبون فورًا');draw();return;}
+  if(e.target.closest('[data-ap]')){L.approved=true;toast('اعتُمد المتجر — ظهر للزبون الآن');draw();return;}
+  if(e.target.closest('[data-rj]'))toast('رُفض الطلب — لن يظهر للعملاء');
+});
+document.querySelectorAll('.tabs button').forEach(b=>b.addEventListener('click',()=>{L.role=b.dataset.r;draw();}));
+langBtn.addEventListener('click',()=>{L.lang=L.lang==='ar'?'en':'ar';draw();toast(L.lang==='ar'?'التطبيق بالعربية':'App switched to English');});
+document.getElementById('reset').addEventListener('click',()=>{const r=L.role;L=SEED_L();L.role=r;draw();F=SEED_F();cat='A';drawForge();toast('أُعيد ضبط التجربة');});
+
+/* ---------------- cycle ---------------- */
+const W={m:'التاجر',a:'الإدارة',c:'الزبون'};
+const STEPS=[
+ {s:'m',ti:'التاجر يسجّل متجره',su:'يختار «لدي متجر» من شاشة البداية',pt:'تسجيل متجر جديد',
+  b:'من شاشة البداية يختار التاجر «لدي متجر»، ويسجّل باسم المتجر ونوعه وساعات عمله. التصفّح متاح دون تسجيل، والتسجيل مطلوب لأصحاب المتاجر فقط.',
+  l:'طلب جديد',m:'<div class="irow"><div class="m"><b>مقهى الحيّ</b><small>مقهى · لا توجد منتجات بعد</small></div><span class="tap no">تحت المراجعة</span></div>'},
+ {s:'m',ti:'يبني تصنيفاته',su:'ولكل تصنيف حرف واحد يخصّه',pt:'كل تصنيف يأخذ حرفًا',
+  b:'«مشروبات ساخنة» تأخذ الحرف A، و«حلويات» تأخذ الحرف B. هذا الحرف هو الجزء الأول من رمز كل منتج داخل التصنيف، ولهذا يبدأ البناء من التصنيفات لا من المنتجات.',
+  l:'التصنيفات',m:'<div class="irow"><span class="chipcode sg">A</span><div class="m"><b>مشروبات ساخنة</b><small>٣ منتجات</small></div></div><div class="irow"><span class="chipcode sg">B</span><div class="m"><b>حلويات</b><small>٢ منتجات</small></div></div>'},
+ {s:'m',ti:'الرمز يتولّد وحده',su:'حرف التصنيف + أول رقم متاح',pt:'رمز ثابت لا يتغيّر',
+  b:'يتكوّن الرمز تلقائيًا من حرف التصنيف مع أول رقم متاح، ويبقى ثابتًا دائمًا حتى لو تغيّر الاسم أو السعر. لا يكتبه التاجر ولا يستطيع تعديله — وهذا ما يجعله صالحًا للطباعة على الطاولة.',
+  l:'منتج جديد',m:'<div class="irow"><span class="chipcode">A01</span><div class="m"><b>قهوة مختصة</b><small>أُنشئ الرمز تلقائيًا</small></div><span class="sar">18</span></div>'},
+ {s:'a',ti:'الإدارة تعتمد المتجر',su:'اعتماد أو رفض — والقرار بشري',pt:'طلب بانتظار الموافقة',
+  b:'يصل الطلب إلى شاشة الإدارة باسم المتجر ونوعه وعدد منتجاته. الإدارة تعتمد أو ترفض، ولا يظهر المطعم للعملاء إلا بعد اعتماده.',
+  l:'طلبات بانتظار الموافقة',m:'<div class="irow"><div class="m"><b>مقهى الحيّ</b><small>مقهى · ٦ منتجات</small></div><span class="tap ok">اعتماد</span><span class="tap no">رفض</span></div>'},
+ {s:'a',ti:'القائمة تُنشر لحظيًا',su:'من «تحت المراجعة» إلى منشور',pt:'النشر لحظة الاعتماد',
+  b:'يستطيع التاجر تجهيز قائمته كاملة أثناء المراجعة، وتظهر للعملاء في اللحظة التي تُعتمد فيها — بلا خطوة نشر منفصلة.',
+  l:'المتاجر المنشورة',m:'<div class="irow"><div class="m"><b>مقهى الحيّ</b><small>مقهى · ٦ منتجات</small></div><span class="tap ok">منشور</span></div>'},
+ {s:'c',ti:'الزبون يبحث بالرمز',su:'أو يتصفّح «قريب منك»',pt:'بحث بالاسم أو بالرمز',
+  b:'يكتب الزبون A01 فيصل إلى المنتج مباشرة، أو يتصفّح المطاعم القريبة منه بقوائم محدّثة لحظيًا، ويرى إن كان المطعم مفتوحًا الآن. ويضغط ♡ ليحفظ ما يعجبه.',
+  l:'نتيجة البحث عن «A01»',m:'<div class="irow"><span class="chipcode">A01</span><div class="m"><b>قهوة مختصة</b><small>مقهى الحيّ</small></div><span class="sar">18</span><span class="tap ok">متوفر</span></div>'},
+ {s:'m',ti:'التاجر يحدّث لحظيًا',su:'سعر جديد أو «نفذت الكمية»',pt:'تحديث بلا إعادة طباعة',
+  b:'يغيّر التاجر السعر أو يعلّم المنتج «نفذ» بضغطة واحدة، فيرى الزبون التغيير فورًا. الرمز المطبوع على الطاولة لا يتغيّر أبدًا.',
+  l:'تحديث المنتج',m:'<div class="irow"><span class="chipcode">A01</span><div class="m"><b>قهوة مختصة</b><small>السعر الجديد ظاهر للزبون</small></div><span class="sar">20</span><span class="tap no">نفذ</span></div>'}
+];
+const listEl=document.querySelector('.list');let cur=0;
+STEPS.forEach((s,i)=>{
+  const b=document.createElement('button');
+  b.className='st';b.type='button';b.id='st'+i;b.dataset.s=s.s;b.setAttribute('role','tab');
+  b.setAttribute('aria-selected',i===0);b.setAttribute('aria-controls','pv');
+  b.innerHTML='<i class="rail"></i><span class="n">'+(i+1)+'</span><span class="t"><b></b><small></small></span>';
+  b.querySelector('.t b').textContent=s.ti;b.querySelector('.t small').textContent=s.su;
+  b.addEventListener('click',()=>sel(i));
+  b.addEventListener('keydown',e=>{if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();
+    const n=(i+(e.key==='ArrowDown'?1:-1)+STEPS.length)%STEPS.length;sel(n);document.getElementById('st'+n).focus();}});
+  listEl.appendChild(b);
+});
+function sel(i){
+  cur=i;const s=STEPS[i];
+  document.querySelectorAll('.st').forEach((el,j)=>el.setAttribute('aria-selected',j===i));
+  document.getElementById('pvT').textContent=s.pt;
+  const w=document.getElementById('pvW');w.className='who '+s.s;w.textContent=W[s.s];
+  document.getElementById('pvB').textContent=s.b;
+  document.getElementById('pvL').textContent=s.l;
+  document.getElementById('pvM').innerHTML=s.m;
+  const bi=document.getElementById('barI');
+  bi.style.width=Math.round(((i+1)/STEPS.length)*100)+'%';
+  bi.style.background=s.s==='c'?'var(--terra)':s.s==='a'?'var(--ink)':'var(--sage)';
+  document.getElementById('prev').disabled=i===0;
+  document.getElementById('next').disabled=i===STEPS.length-1;
+}
+document.getElementById('prev').addEventListener('click',()=>sel(Math.max(0,cur-1)));
+document.getElementById('next').addEventListener('click',()=>sel(Math.min(STEPS.length-1,cur+1)));
+
+drawForge();draw();sel(0);
+</script>
+</body>
+</html>
