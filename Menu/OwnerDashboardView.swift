@@ -21,7 +21,7 @@ struct OwnerDashboardShell: View {
             if let restaurant = selectedRestaurant {
                 VStack(spacing: 0) {
                     header(restaurant)
-                    if !restaurant.isPublished { pendingBanner }
+                    statusBanner(restaurant)
 
                     TabView(selection: $ownerTab) {
                         MenuTab(restaurant: restaurant)
@@ -81,29 +81,43 @@ struct OwnerDashboardShell: View {
         .background(Color.mSage100)
     }
 
-    private var pendingBanner: some View {
-        HStack(spacing: 12) {
-            Text(isArabic
-                 ? "طلبك قيد مراجعة الإدارة. يمكنك تجهيز قائمتك الآن، وتُنشر للعملاء فور الاعتماد."
-                 : "Your request is under admin review. You can prepare your menu now — it publishes to customers the moment it's approved.")
-                .font(.plexArabic(11.5))
-                .foregroundStyle(Color.mInk.opacity(0.65))
-                .multilineTextAlignment(.trailing)
+    /// A live store says nothing; an unpublished one says *why*. Before
+    /// migration 0006's `status` reached the app there was only `isPublished`,
+    /// so a declined application and one still in the queue looked identical —
+    /// a rejected vendor was told, indefinitely, that they were "under review".
+    @ViewBuilder
+    private func statusBanner(_ restaurant: Restaurant) -> some View {
+        if !restaurant.isPublished {
+            let rejected = restaurant.status == .rejected
+            HStack(spacing: 12) {
+                Text(rejected
+                     ? (isArabic
+                        ? "لم يُعتمد طلبك. راجع بيانات مطعمك وقائمته، ثم تواصل مع الإدارة لإعادة النظر فيه."
+                        : "Your application wasn't approved. Review your store details and menu, then contact admin to have it reconsidered.")
+                     : (isArabic
+                        ? "طلبك قيد مراجعة الإدارة. يمكنك تجهيز قائمتك الآن، وتُنشر للعملاء فور الاعتماد."
+                        : "Your request is under admin review. You can prepare your menu now — it publishes to customers the moment it's approved."))
+                    .font(.plexArabic(11.5))
+                    .foregroundStyle(Color.mInk.opacity(0.65))
+                    .multilineTextAlignment(.trailing)
 
-            ZStack {
-                Circle().fill(Color.mAccent100).frame(width: 30, height: 30)
-                Image(systemName: "clock.fill").font(.system(size: 13)).foregroundStyle(Color.mAccent800)
+                ZStack {
+                    Circle().fill(rejected ? Color.mAccent200 : Color.mAccent100).frame(width: 30, height: 30)
+                    Image(systemName: rejected ? "exclamationmark.triangle.fill" : "clock.fill")
+                        .font(.system(size: 13))
+                        .foregroundStyle(Color.mAccent800)
+                }
             }
+            .padding(.horizontal, 15)
+            .padding(.vertical, 12)
+            .background(Color.mSurface)
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .shadow(color: MTheme.shadowCard, radius: 10, x: 0, y: 2)
+            .padding(.horizontal, 20)
+            .padding(.top, -8)
+            .padding(.bottom, 8)
+            .background(Color.mSage100)
         }
-        .padding(.horizontal, 15)
-        .padding(.vertical, 12)
-        .background(Color.mSurface)
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .shadow(color: MTheme.shadowCard, radius: 10, x: 0, y: 2)
-        .padding(.horizontal, 20)
-        .padding(.top, -8)
-        .padding(.bottom, 8)
-        .background(Color.mSage100)
     }
 }
 
@@ -447,16 +461,33 @@ private struct VenueTab: View {
         }
     }
 
+    /// Three states, not two. `isPublished` alone can't tell a declined
+    /// application from one still in the queue — both are unpublished — so a
+    /// rejected vendor used to read "a response usually comes within a business
+    /// day" forever, for a decision that had already been made.
     private var statusCard: some View {
-        HStack {
+        let isRejected = !restaurant.isPublished && restaurant.status == .rejected
+
+        let title: String = if restaurant.isPublished {
+            isArabic ? "متجرك منشور للعملاء" : "Your store is live for customers"
+        } else if isRejected {
+            isArabic ? "لم يُعتمد الطلب" : "Application not approved"
+        } else {
+            isArabic ? "الطلب تحت المراجعة" : "Your request is under review"
+        }
+
+        let detail: String = if restaurant.isPublished {
+            isArabic ? "تصل تعديلات الأسعار والتوفّر إلى العملاء لحظيًا." : "Price and availability edits reach customers instantly."
+        } else if isRejected {
+            isArabic ? "متجرك لا يظهر للعملاء. راجع بياناتك وقائمتك، ثم تواصل مع الإدارة لإعادة النظر." : "Your store isn't visible to customers. Review your details and menu, then contact admin to have it reconsidered."
+        } else {
+            isArabic ? "تراجع الإدارة بياناتك، والرد عادةً خلال يوم عمل." : "Admin is reviewing your details — a response usually comes within a business day."
+        }
+
+        return HStack {
             VStack(alignment: .trailing, spacing: 4) {
-                Text(restaurant.isPublished
-                     ? (isArabic ? "متجرك منشور للعملاء" : "Your store is live for customers")
-                     : (isArabic ? "الطلب تحت المراجعة" : "Your request is under review"))
-                    .font(.plexArabicHeavy(14))
-                Text(restaurant.isPublished
-                     ? (isArabic ? "تصل تعديلات الأسعار والتوفّر إلى العملاء لحظيًا." : "Price and availability edits reach customers instantly.")
-                     : (isArabic ? "تراجع الإدارة بياناتك، والرد عادةً خلال يوم عمل." : "Admin is reviewing your details — a response usually comes within a business day."))
+                Text(title).font(.plexArabicHeavy(14))
+                Text(detail)
                     .font(.plexArabic(11.5))
                     .multilineTextAlignment(.trailing)
             }
@@ -464,7 +495,7 @@ private struct VenueTab: View {
         .frame(maxWidth: .infinity, alignment: .trailing)
         .foregroundStyle(restaurant.isPublished ? Color.mSage900 : Color.mAccent900)
         .padding(15)
-        .background(restaurant.isPublished ? Color.mSage100 : Color.mAccent100)
+        .background(restaurant.isPublished ? Color.mSage100 : (isRejected ? Color.mAccent200 : Color.mAccent100))
         .clipShape(RoundedRectangle(cornerRadius: MTheme.radius, style: .continuous))
     }
 

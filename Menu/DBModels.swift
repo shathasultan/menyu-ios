@@ -13,6 +13,9 @@ struct RestaurantRow: Codable {
     let descriptionAr: String
     let nextCategoryIndex: Int
     let isPublished: Bool
+    /// Optional so rows written before migration 0006 (which added the column)
+    /// still decode; those rows fall back to the published/unpublished reading.
+    let status: String?
     let opensAt: String?
     let closesAt: String?
     let latitude: Double?
@@ -21,7 +24,7 @@ struct RestaurantRow: Codable {
     let menuCategories: [MenuCategoryRow]?
 
     enum CodingKeys: String, CodingKey {
-        case id, name, type, latitude, longitude
+        case id, name, type, status, latitude, longitude
         case ownerID = "owner_id"
         case nameAr = "name_ar"
         case descriptionEn = "description_en"
@@ -47,6 +50,7 @@ struct RestaurantRow: Codable {
             descriptionEn: descriptionEn,
             descriptionAr: descriptionAr,
             isPublished: isPublished,
+            status: status.flatMap(RestaurantStatus.init(rawValue:)) ?? (isPublished ? .approved : .pending),
             opensAt: opensAt,
             closesAt: closesAt,
             latitude: latitude,
@@ -106,18 +110,33 @@ struct MenuItemRecord: Codable {
     }
 }
 
-// MARK: - Small read helpers
+// MARK: - Atomic code claims (migration 0010)
+//
+// These replace the read-then-write counter pair the app used to do over two
+// round-trips. `claim_category_index` / `claim_item_number` increment and
+// return in a single statement, so concurrent adds can't mint the same letter
+// or the same product code.
 
-struct NextCategoryIndexRow: Codable {
-    let nextCategoryIndex: Int
-    enum CodingKeys: String, CodingKey { case nextCategoryIndex = "next_category_index" }
+struct RestaurantIDParam: Encodable {
+    let pRestaurantID: UUID
+    enum CodingKeys: String, CodingKey { case pRestaurantID = "p_restaurant_id" }
 }
 
-struct CategoryInfoRow: Codable {
-    let letter: String
-    let nextItemNumber: Int
+struct CategoryIDParam: Encodable {
+    let pCategoryID: UUID
+    enum CodingKeys: String, CodingKey { case pCategoryID = "p_category_id" }
+}
+
+struct ClaimedCategoryIndex: Decodable {
+    let claimedIndex: Int
+    enum CodingKeys: String, CodingKey { case claimedIndex = "claimed_index" }
+}
+
+struct ClaimedItemNumber: Decodable {
+    let claimedLetter: String
+    let claimedNumber: Int
     enum CodingKeys: String, CodingKey {
-        case letter
-        case nextItemNumber = "next_item_number"
+        case claimedLetter = "claimed_letter"
+        case claimedNumber = "claimed_number"
     }
 }

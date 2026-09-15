@@ -44,6 +44,15 @@ enum RestaurantType: String, CaseIterable {
     }
 }
 
+/// The review state the admin controls. `isPublished` stays the single source
+/// of truth for customer visibility (every existing query still keys off it);
+/// this says *why* a restaurant is hidden — a rejected application and one
+/// still in the queue are both unpublished, but they are not the same thing to
+/// the owner looking at the screen.
+enum RestaurantStatus: String {
+    case pending, approved, rejected
+}
+
 struct MenuItem: Identifiable {
     let id: UUID
     let code: String
@@ -79,6 +88,7 @@ struct Restaurant: Identifiable {
     var descriptionEn: String
     var descriptionAr: String
     var isPublished: Bool
+    var status: RestaurantStatus = .pending
     var opensAt: String?
     var closesAt: String?
     var latitude: Double?

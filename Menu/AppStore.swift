@@ -204,6 +204,21 @@ final class AppStore {
 
     // MARK: - Owner: Item Image
 
+    /// Storage keeps one path per row and re-uploads with `upsert`, so the public
+    /// URL never changes when a vendor replaces a picture — and `cacheControl:
+    /// 3600` keeps the CDN and the app's own URLCache serving the old bytes for
+    /// an hour. SwiftUI never even re-requests: `AsyncImage` is keyed on the URL,
+    /// and the URL is byte-identical. Stamping the upload time makes every
+    /// replacement its own URL, so the new picture appears at once.
+    private static func versioned(_ url: URL) -> String {
+        guard var components = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
+            return url.absoluteString
+        }
+        let stamp = String(Int(Date().timeIntervalSince1970 * 1000))
+        components.queryItems = (components.queryItems ?? []) + [URLQueryItem(name: "v", value: stamp)]
+        return components.url?.absoluteString ?? url.absoluteString
+    }
+
     @discardableResult
     func uploadItemImage(_ itemID: UUID, imageData: Data) async -> String? {
         do {
@@ -213,6 +228,7 @@ final class AppStore {
                 options: FileOptions(cacheControl: "3600", contentType: "image/jpeg", upsert: true)
             )
             let publicURL = try supabase.storage.from("menu-images").getPublicURL(path: path)
+            let imageURL = Self.versioned(publicURL)
 
             struct UpdateImage: Encodable {
                 let imageURL: String
@@ -220,11 +236,11 @@ final class AppStore {
             }
             try await supabase
                 .from("menu_items")
-                .update(UpdateImage(imageURL: publicURL.absoluteString))
+                .update(UpdateImage(imageURL: imageURL))
                 .eq("id", value: itemID.uuidString)
                 .execute()
             await loadMyRestaurants()
-            return publicURL.absoluteString
+            return imageURL
         } catch {
             errorMessage = error.localizedDescription
             return nil
@@ -240,6 +256,7 @@ final class AppStore {
                 options: FileOptions(cacheControl: "3600", contentType: "image/jpeg", upsert: true)
             )
             let publicURL = try supabase.storage.from("menu-images").getPublicURL(path: path)
+            let imageURL = Self.versioned(publicURL)
 
             struct UpdateImage: Encodable {
                 let imageURL: String
@@ -247,12 +264,12 @@ final class AppStore {
             }
             try await supabase
                 .from("restaurants")
-                .update(UpdateImage(imageURL: publicURL.absoluteString))
+                .update(UpdateImage(imageURL: imageURL))
                 .eq("id", value: restaurantID.uuidString)
                 .execute()
             await loadMyRestaurants()
             await loadRestaurants()
-            return publicURL.absoluteString
+            return imageURL
         } catch {
             errorMessage = error.localizedDescription
             return nil
@@ -513,15 +530,17 @@ final class AppStore {
 
     func addCategory(to restaurantID: UUID, nameEn: String, nameAr: String) async {
         do {
-            let indexRow: NextCategoryIndexRow = try await supabase
-                .from("restaurants")
-                .select("next_category_index")
-                .eq("id", value: restaurantID.uuidString)
+            // Claims the next index and increments it in one statement — see
+            // migration 0010. Reading the counter and writing it back as two
+            // round-trips let two concurrent adds read the same value and mint
+            // the same letter.
+            let claim: ClaimedCategoryIndex = try await supabase
+                .rpc("claim_category_index", params: RestaurantIDParam(pRestaurantID: restaurantID))
                 .single()
                 .execute()
                 .value
 
-            let letter = letterFromIndex(indexRow.nextCategoryIndex)
+            let letter = Self.letterFromIndex(claim.claimedIndex)
             let displayOrder = myRestaurants.first(where: { $0.id == restaurantID })?.categories.count ?? 0
 
             struct InsertCategory: Encodable {
@@ -541,16 +560,6 @@ final class AppStore {
                                        name: nameEn, nameAr: nameAr, displayOrder: displayOrder))
                 .execute()
 
-            struct IncrementIndex: Encodable {
-                let nextCategoryIndex: Int
-                enum CodingKeys: String, CodingKey { case nextCategoryIndex = "next_category_index" }
-            }
-            try await supabase
-                .from("restaurants")
-                .update(IncrementIndex(nextCategoryIndex: indexRow.nextCategoryIndex + 1))
-                .eq("id", value: restaurantID.uuidString)
-                .execute()
-
             await loadMyRestaurants()
         } catch {
             errorMessage = error.localizedDescription
@@ -561,15 +570,15 @@ final class AppStore {
 
     func addItem(to categoryID: UUID, restaurantID: UUID, nameEn: String, nameAr: String, price: Double) async {
         do {
-            let catInfo: CategoryInfoRow = try await supabase
-                .from("menu_categories")
-                .select("letter, next_item_number")
-                .eq("id", value: categoryID.uuidString)
+            // Same atomic claim as addCategory — the letter and the number come
+            // back from one statement, so no two products can share a code.
+            let claim: ClaimedItemNumber = try await supabase
+                .rpc("claim_item_number", params: CategoryIDParam(pCategoryID: categoryID))
                 .single()
                 .execute()
                 .value
 
-            let code = catInfo.letter + String(format: "%02d", catInfo.nextItemNumber)
+            let code = claim.claimedLetter + String(format: "%02d", claim.claimedNumber)
             let displayOrder = myRestaurants
                 .first(where: { $0.id == restaurantID })?
                 .categories.first(where: { $0.id == categoryID })?
@@ -592,16 +601,6 @@ final class AppStore {
                 .from("menu_items")
                 .insert(InsertItem(categoryID: categoryID, code: code, name: nameEn,
                                    nameAr: nameAr, price: price, displayOrder: displayOrder))
-                .execute()
-
-            struct IncrementItemNumber: Encodable {
-                let nextItemNumber: Int
-                enum CodingKeys: String, CodingKey { case nextItemNumber = "next_item_number" }
-            }
-            try await supabase
-                .from("menu_categories")
-                .update(IncrementItemNumber(nextItemNumber: catInfo.nextItemNumber + 1))
-                .eq("id", value: categoryID.uuidString)
                 .execute()
 
             await loadMyRestaurants()
@@ -683,8 +682,23 @@ final class AppStore {
         return top
     }
 
-    private func letterFromIndex(_ index: Int) -> String {
-        guard index >= 0 && index < 26 else { return "?" }
-        return String(UnicodeScalar(65 + index)!)
+    /// A, B, … Z, AA, AB, … — spreadsheet-column (bijective base-26) numbering.
+    ///
+    /// This used to return a literal "?" past the 26th category, which is not a
+    /// cosmetic limit: every category after the 26th then shared the letter "?",
+    /// and since item numbers restart per category, two different products in the
+    /// same restaurant both ended up as "?01". A code is the one thing a customer
+    /// types to find a product, so a collision hands them the wrong item.
+    ///
+    /// Existing codes keep their meaning — the first 26 indices are unchanged.
+    nonisolated static func letterFromIndex(_ index: Int) -> String {
+        guard index >= 0 else { return "A" }
+        var remaining = index
+        var letters = ""
+        repeat {
+            letters = String(UnicodeScalar(65 + remaining % 26)!) + letters
+            remaining = remaining / 26 - 1
+        } while remaining >= 0
+        return letters
     }
 }
