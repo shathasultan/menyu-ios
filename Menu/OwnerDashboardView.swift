@@ -309,7 +309,12 @@ private struct ProductCard: View {
                     get: { isAvailable },
                     set: { newValue in
                         isAvailable = newValue
-                        Task { await store.toggleAvailability(itemID: item.id, categoryID: categoryID, restaurantID: restaurantID) }
+                        // Sends the value the switch is now showing. The old
+                        // call sent "the opposite of whatever is in the cache",
+                        // so two quick taps both read the same cached value and
+                        // wrote the same result — the switch and the database
+                        // then disagreed until the next reload.
+                        Task { await store.setAvailability(itemID: item.id, isAvailable: newValue) }
                     }
                 ))
             }
@@ -693,8 +698,8 @@ private struct HoursEditSheet: View {
 
     init(restaurant: Restaurant) {
         self.restaurant = restaurant
-        _opensAt = State(initialValue: Self.parseTime(restaurant.opensAt, defaultHour: 9))
-        _closesAt = State(initialValue: Self.parseTime(restaurant.closesAt, defaultHour: 23))
+        _opensAt = State(initialValue: Hours.date(restaurant.opensAt, defaultHour: 9))
+        _closesAt = State(initialValue: Hours.date(restaurant.closesAt, defaultHour: 23))
     }
 
     var body: some View {
@@ -728,7 +733,7 @@ private struct HoursEditSheet: View {
                     onAction: {
                         isSaving = true
                         Task {
-                            await store.updateRestaurantHours(restaurant.id, opensAt: Self.formatTime(opensAt), closesAt: Self.formatTime(closesAt))
+                            await store.updateRestaurantHours(restaurant.id, opensAt: Hours.text(opensAt), closesAt: Hours.text(closesAt))
                             dismiss()
                         }
                     }
@@ -737,12 +742,6 @@ private struct HoursEditSheet: View {
         }
     }
 
-    private static func parseTime(_ s: String?, defaultHour: Int) -> Date {
-        if let s, let d = timeFormatter.date(from: s) { return d }
-        return Calendar.current.date(bySettingHour: defaultHour, minute: 0, second: 0, of: Date()) ?? Date()
-    }
-    private static func formatTime(_ date: Date) -> String { timeFormatter.string(from: date) }
-    private static let timeFormatter: DateFormatter = { let f = DateFormatter(); f.dateFormat = "HH:mm"; return f }()
 }
 
 // MARK: - Create Restaurant Sheet
@@ -756,6 +755,7 @@ struct CreateRestaurantSheet: View {
     @State private var nameEn = ""
     @State private var type: RestaurantType = .restaurant
     @State private var descriptionAr = ""
+    @State private var descriptionEn = ""
     @State private var isSaving = false
 
     private var isArabic: Bool { store.language == .arabic }
@@ -777,8 +777,14 @@ struct CreateRestaurantSheet: View {
                             }
                         }
                     }
-                    MFormField(label: isArabic ? "وصف قصير (اختياري)" : "Short description (optional)") {
+                    MFormField(label: isArabic ? "وصف قصير بالعربي (اختياري)" : "Short Arabic description (optional)") {
                         TextField(isArabic ? "سطر واحد يعرّف بمطعمك" : "One line about your place", text: $descriptionAr, axis: .vertical).mFieldStyle()
+                    }
+                    // Its own field now. Both descriptions used to be set from
+                    // this one Arabic box, so an English-language customer was
+                    // shown Arabic text in an English UI.
+                    MFormField(label: isArabic ? "وصف قصير بالإنجليزي (اختياري)" : "Short English description (optional)") {
+                        TextField("One line about your place", text: $descriptionEn, axis: .vertical).mFieldStyle()
                     }
                 }
                 .padding(20)
@@ -799,7 +805,7 @@ struct CreateRestaurantSheet: View {
                         Task {
                             let finalNameEn = nameEn.isEmpty ? nameAr : nameEn
                             let finalNameAr = nameAr.isEmpty ? nameEn : nameAr
-                            let created = await store.createRestaurant(nameEn: finalNameEn, nameAr: finalNameAr, type: type, descriptionEn: descriptionAr, descriptionAr: descriptionAr)
+                            let created = await store.createRestaurant(nameEn: finalNameEn, nameAr: finalNameAr, type: type, descriptionEn: descriptionEn, descriptionAr: descriptionAr)
                             isSaving = false
                             guard let created else { return }
                             onCreated(created)

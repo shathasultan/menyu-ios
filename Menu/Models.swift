@@ -222,6 +222,32 @@ enum Money {
     }
 }
 
+// MARK: - Opening hours
+
+/// Converts between the `Date` the hour wheel produces and the bare "HH:mm"
+/// string the database stores.
+///
+/// The formatter is pinned to `en_US_POSIX`. Without a locale, `DateFormatter`
+/// follows the device's: on a phone set to Arabic it writes "٠٩:٠٠", which goes
+/// into the database and then fails `Int(parts[0])` on the way back — so
+/// `isOpenNow` silently returns nil and the venue shows neither open nor closed,
+/// forever, for everyone.
+enum Hours {
+    static func text(_ date: Date) -> String { formatter.string(from: date) }
+
+    static func date(_ hhmm: String?, defaultHour: Int) -> Date {
+        if let hhmm, let parsed = formatter.date(from: hhmm) { return parsed }
+        return Calendar.current.date(bySettingHour: defaultHour, minute: 0, second: 0, of: Date()) ?? Date()
+    }
+
+    private static let formatter: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "HH:mm"
+        return f
+    }()
+}
+
 // MARK: - Arabic text matching
 
 extension String {

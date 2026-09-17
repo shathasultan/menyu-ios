@@ -270,14 +270,31 @@ struct AccountSignInView: View {
 
 // MARK: - Google glyph
 
-/// A stylized four-color ring approximating the Google mark — used only on
-/// the sign-in button. Not a pixel-perfect reproduction of the official
-/// logo (that asset isn't available in this environment); swap in the real
-/// SVG if brand precision matters here.
+/// Google's sign-in branding guidelines require their own supplied mark on the
+/// button — a lookalike is grounds for rejection, so this prefers the real
+/// asset and only falls back to the four-color ring when it is missing.
+///
+/// To ship: download the "G" mark from Google's branding kit and add it to
+/// `Assets.xcassets` as an image set named `GoogleG`. Nothing else changes.
 struct GoogleGlyph: View {
     var size: CGFloat = 18
 
+    static var hasOfficialMark: Bool { UIImage(named: "GoogleG") != nil }
+
     var body: some View {
+        Group {
+            if Self.hasOfficialMark {
+                Image("GoogleG")
+                    .resizable()
+                    .scaledToFit()
+            } else {
+                approximateRing
+            }
+        }
+        .frame(width: size, height: size)
+    }
+
+    private var approximateRing: some View {
         ZStack {
             arc(0.0, 0.25, Color(hex: 0x4285F4))
             arc(0.25, 0.5, Color(hex: 0x34A853))
@@ -285,7 +302,6 @@ struct GoogleGlyph: View {
             arc(0.75, 1.0, Color(hex: 0xEA4335))
         }
         .rotationEffect(.degrees(-90))
-        .frame(width: size, height: size)
     }
 
     private func arc(_ from: CGFloat, _ to: CGFloat, _ color: Color) -> some View {

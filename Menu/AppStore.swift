@@ -58,7 +58,7 @@ final class AppStore {
     /// Raw PostgREST/network errors read like stack traces and leak backend
     /// shape to whoever is holding the phone. Everything the user sees goes
     /// through here; the underlying error still reaches the console.
-    private func report(_ error: Error, fallback: String) {
+    func report(_ error: Error, fallback: String) {
         let raw = error.localizedDescription
         print("[menyu] \(fallback) — \(raw)")
         let text = raw.lowercased()
@@ -287,7 +287,7 @@ final class AppStore {
     /// stored public URL. Deletes have to target the object that actually
     /// exists rather than re-deriving a naming convention, because the
     /// convention changed in 0008 and old rows still point at the old one.
-    private static func storagePath(from urlString: String?) -> String? {
+    static func storagePath(from urlString: String?) -> String? {
         guard let urlString, let range = urlString.range(of: "/menu-images/") else { return nil }
         var path = String(urlString[range.upperBound...])
         if let q = path.firstIndex(of: "?") { path = String(path[..<q]) }
@@ -698,12 +698,14 @@ final class AppStore {
 
     // MARK: - Owner: Toggle Availability
 
-    func toggleAvailability(itemID: UUID, categoryID: UUID, restaurantID: UUID) async {
-        guard let current = myRestaurants
-            .first(where: { $0.id == restaurantID })?
-            .categories.first(where: { $0.id == categoryID })?
-            .items.first(where: { $0.id == itemID }) else { return }
-
+    /// Writes the requested state directly.
+    ///
+    /// It used to take no value and send `!current.isAvailable`, read from the
+    /// local cache. Two quick taps both read the same cached value before either
+    /// reload landed, so both wrote the same result while the switch had moved
+    /// twice — leaving the toggle showing one thing and the database holding
+    /// another until something forced a refresh.
+    func setAvailability(itemID: UUID, isAvailable: Bool) async {
         do {
             struct UpdateAvailability: Encodable {
                 let isAvailable: Bool
@@ -711,7 +713,7 @@ final class AppStore {
             }
             try await supabase
                 .from("menu_items")
-                .update(UpdateAvailability(isAvailable: !current.isAvailable))
+                .update(UpdateAvailability(isAvailable: isAvailable))
                 .eq("id", value: itemID.uuidString)
                 .execute()
             await loadMyRestaurants()

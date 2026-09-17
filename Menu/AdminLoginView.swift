@@ -86,6 +86,21 @@ struct AdminLoginView: View {
                 }
                 .buttonStyle(.mPrimary())
                 .disabled(submitting || email.isEmpty || password.isEmpty)
+
+                // This screen only accepted a password, but an admin account
+                // created through Google has none — its owner could never get
+                // in here, only through the customer Account tab. Same gate
+                // either way: sign in, then `is_admin()` decides.
+                Button {
+                    Task { await submitWithGoogle() }
+                } label: {
+                    Text(isArabic ? "الدخول بحساب Google بدلًا من ذلك" : "Use Google instead")
+                        .font(.plexArabic(12, weight: .bold))
+                        .foregroundStyle(Color.mAdminTextSecondary)
+                }
+                .disabled(submitting)
+                .frame(maxWidth: .infinity, alignment: .center)
+                .padding(.top, 14)
             }
             .padding(.horizontal, 22)
         }
@@ -118,14 +133,34 @@ struct AdminLoginView: View {
         defer { submitting = false }
         do {
             try await store.signIn(email: email.trimmingCharacters(in: .whitespaces), password: password)
-            if store.isAdmin {
-                onSuccess()
-            } else {
-                await store.signOut()
-                error = isArabic ? "هذا البريد لا يملك صلاحية الإدارة." : "This email doesn't have admin access."
-            }
+            await finishIfAdmin()
         } catch {
             self.error = isArabic ? "البريد أو كلمة المرور غير صحيحة." : "Incorrect email or password."
+        }
+    }
+
+    private func submitWithGoogle() async {
+        error = nil
+        guard let presenter = AppStore.topViewController() else { return }
+        submitting = true
+        defer { submitting = false }
+        do {
+            try await store.signInWithGoogle(presenting: presenter)
+            await finishIfAdmin()
+        } catch {
+            self.error = isArabic ? "تعذّر الدخول بحساب قوقل." : "Couldn't sign in with Google."
+        }
+    }
+
+    /// `store.isAdmin` is answered by `public.is_admin()` during `checkSession`,
+    /// which both sign-in paths call — so this reads the database's answer, not
+    /// a list of emails inside the app.
+    private func finishIfAdmin() async {
+        if store.isAdmin {
+            onSuccess()
+        } else {
+            await store.signOut()
+            error = isArabic ? "هذا الحساب لا يملك صلاحية الإدارة." : "This account doesn't have admin access."
         }
     }
 }
