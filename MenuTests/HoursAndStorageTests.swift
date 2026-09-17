@@ -9,28 +9,32 @@ final class HoursAndStorageTests: XCTestCase {
     // MARK: - Hours
 
     func testHoursAlwaysWriteLatinDigits() {
-        // The formatter used to have no locale, so on a phone set to Arabic it
-        // wrote "٠٩:٠٠" into the database. Reading it back, `Int("٠٩")` is nil,
-        // so `isOpenNow` returned nil and the venue showed neither open nor
-        // closed for every customer, permanently.
-        var components = DateComponents()
-        components.year = 2026; components.month = 9; components.day = 17
-        components.hour = 9; components.minute = 5
-        let date = Calendar.current.date(from: components)!
-
-        let text = Hours.text(date)
+        // On a phone set to Arabic the old `DateFormatter` path wrote "٠٩:٠٠"
+        // into the database. Reading it back, `Int("٠٩")` is nil, so
+        // `isOpenNow` returned nil and the venue showed neither open nor closed
+        // for every customer, permanently. No formatter is involved now.
+        let text = Hours.text(minutes: 9 * 60 + 5)
         XCTAssertEqual(text, "09:05")
         XCTAssertTrue(text.allSatisfy { $0.isASCII })
     }
 
     func testHoursRoundTrip() {
-        let restored = Hours.date("18:30", defaultHour: 9)
-        XCTAssertEqual(Hours.text(restored), "18:30")
+        XCTAssertEqual(Hours.text(minutes: Hours.minutes("18:30", defaultHour: 9)), "18:30")
+        XCTAssertEqual(Hours.minutes("00:00", defaultHour: 9), 0)
+        XCTAssertEqual(Hours.minutes("23:59", defaultHour: 9), 23 * 60 + 59)
     }
 
     func testHoursFallBackToTheDefaultHour() {
-        XCTAssertEqual(Hours.text(Hours.date(nil, defaultHour: 9)), "09:00")
-        XCTAssertEqual(Hours.text(Hours.date("not a time", defaultHour: 23)), "23:00")
+        XCTAssertEqual(Hours.text(minutes: Hours.minutes(nil, defaultHour: 9)), "09:00")
+        XCTAssertEqual(Hours.text(minutes: Hours.minutes("not a time", defaultHour: 23)), "23:00")
+        // Out-of-range values in stored data fall back rather than wrap around.
+        XCTAssertEqual(Hours.text(minutes: Hours.minutes("31:00", defaultHour: 9)), "09:00")
+        XCTAssertEqual(Hours.text(minutes: Hours.minutes("09:75", defaultHour: 9)), "09:00")
+    }
+
+    func testHoursTextClampsToADay() {
+        XCTAssertEqual(Hours.text(minutes: -5), "00:00")
+        XCTAssertEqual(Hours.text(minutes: 24 * 60), "23:59")
     }
 
     func testStoredHoursDriveOpenNow() {

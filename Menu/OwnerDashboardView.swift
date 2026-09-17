@@ -62,13 +62,8 @@ struct OwnerDashboardShell: View {
                     Task { await store.signOut() }
                 } label: {
                     Text(isArabic ? "خروج" : "Sign Out")
-                        .font(.plexArabic(11.5, weight: .bold))
-                        .foregroundStyle(Color.mSage900)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(Color.mSurface)
-                        .clipShape(Capsule())
                 }
+                .buttonStyle(.mPill(.mSage700, filled: false))
                 Spacer()
                 Text(restaurant.displayName(store.language))
                     .font(.plexArabicHeavy(17))
@@ -127,6 +122,7 @@ private struct MenuTab: View {
     @State private var addItemForCategory: MenuCategory? = nil
     @State private var selectedCategoryID: MenuCategory.ID?
     @State private var confirmDeleteRestaurant = false
+    @State private var confirmDeleteCategory: MenuCategory? = nil
 
     private var isArabic: Bool { store.language == .arabic }
 
@@ -162,19 +158,23 @@ private struct MenuTab: View {
                             Text(isArabic ? "التصنيفات" : "Categories")
                                 .font(.plexArabicHeavy(16))
                                 .foregroundStyle(Color.mInk)
+
+                            // Moved off the navigation bar: a system toolbar
+                            // item can't take the brand's pill treatment, and a
+                            // bare "+" gave no hint of what it adds.
+                            Button { showAddCategory = true } label: {
+                                Text(isArabic ? "تصنيف جديد" : "New Category")
+                            }
+                            .buttonStyle(.mPill(.mSage700, filled: false))
+
                             Spacer()
                             if let category = activeCategory {
                                 Button {
                                     addItemForCategory = category
                                 } label: {
-                                    Text(isArabic ? "+ أضف منتج" : "+ Add Item")
-                                        .font(.plexArabic(12.5, weight: .bold))
-                                        .foregroundStyle(.white)
-                                        .padding(.horizontal, 15)
-                                        .padding(.vertical, 9)
-                                        .background(Color.mAccent)
-                                        .clipShape(Capsule())
+                                    Text(isArabic ? "أضف منتجًا" : "Add Item")
                                 }
+                                .buttonStyle(.mPill(.mAccent))
                             }
                         }
 
@@ -185,12 +185,12 @@ private struct MenuTab: View {
                                 }
                             }
 
-                            Button(role: .destructive) {
-                                deleteCategory(category)
+                            Button {
+                                confirmDeleteCategory = category
                             } label: {
-                                Label(isArabic ? "حذف هذا التصنيف" : "Delete This Category", systemImage: "trash")
-                                    .font(.plexArabic(12.5, weight: .semibold))
+                                Text(isArabic ? "حذف هذا التصنيف" : "Delete This Category")
                             }
+                            .buttonStyle(.mDestructive())
                             .padding(.top, 4)
                         }
                     }
@@ -206,33 +206,45 @@ private struct MenuTab: View {
                         .background(Color.mAccent100)
                         .clipShape(RoundedRectangle(cornerRadius: MTheme.radius, style: .continuous))
 
-                    Button(role: .destructive) {
+                    Button {
                         confirmDeleteRestaurant = true
                     } label: {
                         Text(isArabic ? "حذف المطعم نهائيًا" : "Delete Restaurant Permanently")
-                            .font(.plexArabic(13.5, weight: .semibold))
                     }
+                    .buttonStyle(.mDestructive())
                     .padding(.top, 8)
                 }
                 .padding(20)
             }
             .background(Color.mBackground)
             .navigationTitle(isArabic ? "المنيو" : "Menu")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button { showAddCategory = true } label: { Image(systemName: "plus") }
-                }
-            }
-            .confirmationDialog(
-                isArabic
-                    ? "حذف \(restaurant.displayName(store.language)) نهائيًا؟ كل التصنيفات والمنتجات تُحذف معه، ولا يمكن التراجع."
-                    : "Permanently delete \(restaurant.displayName(store.language))? All its categories and items go with it — this can't be undone.",
-                isPresented: $confirmDeleteRestaurant,
-                titleVisibility: .visible
-            ) {
-                Button(isArabic ? "حذف نهائيًا" : "Delete Permanently", role: .destructive) {
+            // كانت confirmationDialog نظامية: خطّها وزرّها الأحمر من النظام،
+            // وهي آخر قطعة غريبة عن التصميم في كل عملية حذف.
+            .sheet(isPresented: $confirmDeleteRestaurant) {
+                MConfirmSheet(
+                    title: isArabic ? "حذف المطعم نهائيًا؟" : "Delete this restaurant?",
+                    message: isArabic
+                        ? "\(restaurant.displayName(store.language)) وكل تصنيفاته ومنتجاته تُحذف معه، ولا يمكن التراجع."
+                        : "\(restaurant.displayName(store.language)) and every category and item in it will be removed. This can't be undone.",
+                    confirmTitle: isArabic ? "حذف نهائيًا" : "Delete Permanently",
+                    cancelTitle: isArabic ? "إلغاء" : "Cancel"
+                ) {
                     Task { await store.deleteRestaurant(restaurant.id) }
                 }
+                .presentationDetents([.height(400)])
+            }
+            .sheet(item: $confirmDeleteCategory) { category in
+                MConfirmSheet(
+                    title: isArabic ? "حذف التصنيف؟" : "Delete this category?",
+                    message: isArabic
+                        ? "\(category.letter) · \(category.displayName(store.language)) — و\(category.items.count) منتجًا فيه تُحذف معه."
+                        : "\(category.letter) · \(category.displayName(store.language)) — and its \(category.items.count) items go with it.",
+                    confirmTitle: isArabic ? "حذف التصنيف" : "Delete Category",
+                    cancelTitle: isArabic ? "إلغاء" : "Cancel"
+                ) {
+                    deleteCategory(category)
+                }
+                .presentationDetents([.height(400)])
             }
             .sheet(isPresented: $showAddCategory) {
                 AddCategorySheet(restaurantID: restaurant.id)
@@ -426,6 +438,7 @@ private struct VenueTab: View {
                     } label: {
                         infoRow(icon: "clock", title: isArabic ? "أوقات الدوام" : "Hours", value: hoursText)
                     }
+                    .buttonStyle(.mRow)
                     Button {
                         showLocationPicker = true
                     } label: {
@@ -433,6 +446,7 @@ private struct VenueTab: View {
                                 value: restaurant.hasLocation ? (isArabic ? "محدَّد" : "Set") : (isArabic ? "لم يُحدَّد" : "Not set"),
                                 valueColor: restaurant.hasLocation ? .mSage700 : .mInkFaint)
                     }
+                    .buttonStyle(.mRow)
 
                     Button {
                         save()
@@ -597,6 +611,7 @@ private struct AccountTab: View {
                                     .clipShape(RoundedRectangle(cornerRadius: MTheme.radiusSmall, style: .continuous))
                                     .overlay(RoundedRectangle(cornerRadius: MTheme.radiusSmall, style: .continuous).strokeBorder(Color.mLine, lineWidth: 1))
                                 }
+                                .buttonStyle(.mRow)
                             }
                         }
                     }
@@ -606,7 +621,7 @@ private struct AccountTab: View {
                     }
                     .buttonStyle(.mSecondary())
 
-                    Button(role: .destructive) {
+                    Button {
                         Task { await store.signOut() }
                     } label: {
                         Text(isArabic ? "تسجيل الخروج" : "Sign Out")
@@ -618,9 +633,8 @@ private struct AccountTab: View {
                         confirmDeleteAccount = true
                     } label: {
                         Text(isArabic ? "حذف الحساب نهائيًا" : "Delete Account Permanently")
-                            .font(.plexArabic(12.5, weight: .semibold))
-                            .foregroundStyle(Color.mInkMuted)
                     }
+                    .buttonStyle(.mDestructive(bordered: false))
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.top, 8)
 
@@ -637,18 +651,21 @@ private struct AccountTab: View {
             .sheet(isPresented: $showCreateRestaurant) {
                 CreateRestaurantSheet(onCreated: { newID in store.selectedRestaurantID = newID })
             }
-            .confirmationDialog(
-                isArabic
-                    ? "حذف حسابك نهائيًا؟ كل بياناتك ومطاعمك تُحذف معه، ولا يمكن التراجع."
-                    : "Permanently delete your account? All your data and restaurants go with it — this can't be undone.",
-                isPresented: $confirmDeleteAccount,
-                titleVisibility: .visible
-            ) {
-                Button(isArabic ? "حذف نهائيًا" : "Delete Permanently", role: .destructive) {
+            .sheet(isPresented: $confirmDeleteAccount) {
+                MConfirmSheet(
+                    title: isArabic ? "حذف الحساب نهائيًا؟" : "Delete your account?",
+                    message: isArabic
+                        ? "كل بياناتك ومطاعمك ومنتجاتها تُحذف معه، ولا يمكن التراجع."
+                        : "Every restaurant and item you own will be removed. This can't be undone.",
+                    confirmTitle: isArabic ? "حذف نهائيًا" : "Delete Permanently",
+                    cancelTitle: isArabic ? "إلغاء" : "Cancel"
+                ) {
                     Task {
-                        do { try await store.deleteAccount() } catch { store.errorMessage = error.localizedDescription }
+                        do { try await store.deleteAccount() }
+                        catch { store.report(error, fallback: isArabic ? "تعذّر حذف الحساب." : "Couldn't delete the account.") }
                     }
                 }
+                .presentationDetents([.height(400)])
             }
         }
     }
@@ -690,32 +707,32 @@ private struct HoursEditSheet: View {
     @Environment(AppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     let restaurant: Restaurant
-    @State private var opensAt: Date
-    @State private var closesAt: Date
+    @State private var opensAt: Int
+    @State private var closesAt: Int
     @State private var isSaving = false
 
     private var isArabic: Bool { store.language == .arabic }
 
     init(restaurant: Restaurant) {
         self.restaurant = restaurant
-        _opensAt = State(initialValue: Hours.date(restaurant.opensAt, defaultHour: 9))
-        _closesAt = State(initialValue: Hours.date(restaurant.closesAt, defaultHour: 23))
+        _opensAt = State(initialValue: Hours.minutes(restaurant.opensAt, defaultHour: 9))
+        _closesAt = State(initialValue: Hours.minutes(restaurant.closesAt, defaultHour: 23))
     }
 
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 20) {
-                    MFormField(label: isArabic ? "وقت الفتح" : "Opens at") {
-                        DatePicker("", selection: $opensAt, displayedComponents: .hourAndMinute)
-                            .labelsHidden().datePickerStyle(.wheel)
-                            .environment(\.layoutDirection, .leftToRight)
-                    }
-                    MFormField(label: isArabic ? "وقت الإغلاق" : "Closes at") {
-                        DatePicker("", selection: $closesAt, displayedComponents: .hourAndMinute)
-                            .labelsHidden().datePickerStyle(.wheel)
-                            .environment(\.layoutDirection, .leftToRight)
-                    }
+                VStack(alignment: .leading, spacing: 26) {
+                    MTimePicker(minutes: $opensAt, label: isArabic ? "وقت الفتح" : "Opens at")
+                    MTimePicker(minutes: $closesAt, label: isArabic ? "وقت الإغلاق" : "Closes at")
+
+                    Text(isArabic
+                         ? "الوقت بتوقيت مطعمك. إن كان الإغلاق قبل الفتح فالدوام يمتد بعد منتصف الليل."
+                         : "Times are the venue's own. A closing time before the opening time means the venue runs past midnight.")
+                        .font(.plexArabic(11.5))
+                        .foregroundStyle(Color.mInkFaint)
+                        .multilineTextAlignment(.trailing)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
                 }
                 .padding(20)
             }
@@ -733,7 +750,7 @@ private struct HoursEditSheet: View {
                     onAction: {
                         isSaving = true
                         Task {
-                            await store.updateRestaurantHours(restaurant.id, opensAt: Hours.text(opensAt), closesAt: Hours.text(closesAt))
+                            await store.updateRestaurantHours(restaurant.id, opensAt: Hours.text(minutes: opensAt), closesAt: Hours.text(minutes: closesAt))
                             dismiss()
                         }
                     }

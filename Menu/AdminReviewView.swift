@@ -34,12 +34,8 @@ struct AdminReviewView: View {
                     Task { await store.signOut() }
                 } label: {
                     Text(isArabic ? "خروج" : "Sign Out")
-                        .font(.plexArabic(11.5, weight: .bold))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 12).padding(.vertical, 6)
-                        .background(Color.white.opacity(0.12))
-                        .clipShape(Capsule())
                 }
+                .buttonStyle(.mPill(.white, filled: false, onDark: true))
                 Spacer()
                 HStack(spacing: 6) {
                     Text(isArabic ? "الإدارة" : "Admin")
@@ -156,12 +152,12 @@ private struct PendingRestaurantCard: View {
             .buttonStyle(.plain)
 
             HStack(spacing: 9) {
-                Button(role: .destructive) {
+                Button {
                     Task { await store.rejectRestaurant(restaurant.id) }
                 } label: {
                     Text(isArabic ? "رفض" : "Reject")
                 }
-                .buttonStyle(.mSecondary(fullWidth: false))
+                .buttonStyle(.mDestructive(fullWidth: false))
 
                 Button {
                     Task { await store.approveRestaurant(restaurant.id) }
@@ -254,12 +250,12 @@ private struct PendingRestaurantDetail: View {
                     }
 
                     HStack(spacing: 9) {
-                        Button(role: .destructive) {
+                        Button {
                             Task { await store.rejectRestaurant(restaurant.id); onDecided(); dismiss() }
                         } label: {
                             Text(isArabic ? "رفض" : "Reject")
                         }
-                        .buttonStyle(.mSecondary(fullWidth: false))
+                        .buttonStyle(.mDestructive(fullWidth: false))
 
                         Button {
                             Task { await store.approveRestaurant(restaurant.id); onDecided(); dismiss() }
@@ -313,12 +309,8 @@ private struct LiveRestaurantRow: View {
                 Task { await store.suspendRestaurant(restaurant.id) }
             } label: {
                 Text(isArabic ? "إيقاف" : "Suspend")
-                    .font(.plexArabic(11, weight: .bold))
-                    .foregroundStyle(Color.mInkSecondary)
-                    .padding(.horizontal, 10).padding(.vertical, 5)
-                    .background(Color.mChipFill)
-                    .clipShape(Capsule())
             }
+            .buttonStyle(.mPill(.mInkSecondary, filled: false))
             VStack(alignment: .trailing, spacing: 2) {
                 Text(restaurant.displayName(store.language))
                     .font(.plexArabicHeavy(14))

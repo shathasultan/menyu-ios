@@ -67,7 +67,7 @@ struct AccountView: View {
                 .buttonStyle(.mPrimary(.mSage))
                 .padding(.horizontal, 28)
 
-                Button(role: .destructive) {
+                Button {
                     Task { await store.signOut() }
                 } label: {
                     Text(isArabic ? "تسجيل الخروج" : "Sign Out")

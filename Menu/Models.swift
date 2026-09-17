@@ -224,28 +224,31 @@ enum Money {
 
 // MARK: - Opening hours
 
-/// Converts between the `Date` the hour wheel produces and the bare "HH:mm"
-/// string the database stores.
+/// Converts between the picker's value and the bare "HH:mm" string the database
+/// stores.
 ///
-/// The formatter is pinned to `en_US_POSIX`. Without a locale, `DateFormatter`
-/// follows the device's: on a phone set to Arabic it writes "٠٩:٠٠", which goes
-/// into the database and then fails `Int(parts[0])` on the way back — so
-/// `isOpenNow` silently returns nil and the venue shows neither open nor closed,
-/// forever, for everyone.
+/// This used to go through a `DateFormatter` with no locale, which on a phone
+/// set to Arabic wrote "٠٩:٠٠" into the database; reading it back,
+/// `Int(parts[0])` is nil, so `isOpenNow` returned nil and the venue showed
+/// neither open nor closed, permanently, for everyone. Working in plain minutes
+/// removes the formatter — and the locale — from the path entirely.
 enum Hours {
-    static func text(_ date: Date) -> String { formatter.string(from: date) }
-
-    static func date(_ hhmm: String?, defaultHour: Int) -> Date {
-        if let hhmm, let parsed = formatter.date(from: hhmm) { return parsed }
-        return Calendar.current.date(bySettingHour: defaultHour, minute: 0, second: 0, of: Date()) ?? Date()
+    /// Minutes since midnight — what the chip picker works in. There is no
+    /// `Date` and no `DateFormatter` anywhere on this path any more, so the
+    /// locale can't get a vote: `String(format:)` writes Latin digits always.
+    static func minutes(_ hhmm: String?, defaultHour: Int) -> Int {
+        guard let hhmm else { return defaultHour * 60 }
+        let parts = hhmm.split(separator: ":")
+        guard parts.count == 2, let h = Int(parts[0]), let m = Int(parts[1]),
+              (0..<24).contains(h), (0..<60).contains(m) else { return defaultHour * 60 }
+        return h * 60 + m
     }
 
-    private static let formatter: DateFormatter = {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "en_US_POSIX")
-        f.dateFormat = "HH:mm"
-        return f
-    }()
+    static func text(minutes: Int) -> String {
+        let clamped = max(0, min(minutes, 24 * 60 - 1))
+        return String(format: "%02d:%02d", clamped / 60, clamped % 60)
+    }
+
 }
 
 // MARK: - Arabic text matching
