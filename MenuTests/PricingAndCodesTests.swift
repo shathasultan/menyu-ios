@@ -21,8 +21,13 @@ final class PricingAndCodesTests: XCTestCase {
 
     func testPriceUsesLatinDigitsInBothLanguages() {
         // The formatter is pinned to en_US_POSIX: an Arabic device locale would
-        // otherwise render ١٤ and the vendor's own code chips wouldn't match.
-        XCTAssertEqual(Money.text(1234.5, language: .arabic), "1,234.5 ر.س")
+        // otherwise render ١٢٣٤ and the vendor's own code chips wouldn't match.
+        // POSIX also groups nothing, so the number reads plainly.
+        XCTAssertEqual(Money.text(1234.5, language: .arabic), "1234.5 ر.س")
+
+        // The point of the test, stated directly: no Arabic-Indic digits, ever.
+        let digits = Money.text(1234.5, language: .arabic).filter(\.isNumber)
+        XCTAssertTrue(digits.allSatisfy { $0.isASCII }, "قيمة بأرقام غير لاتينية: \(digits)")
     }
 
     func testParseAcceptsArabicIndicDigits() {

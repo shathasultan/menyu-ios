@@ -48,11 +48,16 @@ final class SignInConfigurationTests: XCTestCase {
     func testAppleSignInEntitlementIsDeclared() throws {
         // Guideline 4.8: offering Google means Apple has to be offered too, and
         // the button does nothing without this entitlement.
-        let path = try XCTUnwrap(Bundle(for: Self.self).path(forResource: "Menu", ofType: "entitlements")
-                                 ?? Bundle.main.path(forResource: "Menu", ofType: "entitlements"),
-                                 "Menu.entitlements not readable from the test bundle — verify manually in Signing & Capabilities")
-        let contents = try String(contentsOfFile: path, encoding: .utf8)
-        XCTAssertTrue(contents.contains("com.apple.developer.applesignin"))
+        //
+        // Read from the built executable rather than from `Menu.entitlements`
+        // on disk: the source file is not copied into any bundle, so looking it
+        // up by name always failed. Entitlements are embedded in the binary at
+        // signing time, which is the thing that actually ships.
+        let executable = try XCTUnwrap(Bundle.main.executableURL, "no executable for the test host")
+        let binary = try Data(contentsOf: executable, options: .mappedIfSafe)
+        let entitlement = Data("com.apple.developer.applesignin".utf8)
+        XCTAssertNotNil(binary.range(of: entitlement),
+                        "com.apple.developer.applesignin غير مضمَّن في الثنائي — راجعي Signing & Capabilities")
     }
 
     func testAppleNonceIsFreshAndHashed() async {
