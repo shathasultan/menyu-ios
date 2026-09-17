@@ -30,26 +30,115 @@ final class AppStore {
 
     var isAuthenticated: Bool { currentUserID != nil }
 
-    /// Hardcoded reviewers. The second address exists so reviewers can try the
-    /// admin role without being handed the owner's personal account; it is
-    /// granted the same two policies in migration 0007.
-    /// Move to a real roles table if a third admin is ever needed.
-    private static let adminEmails: Set<String> = [
-        "shathasultann9@gmail.com",
-        "demo.admin@menyu.sa",
-    ]
-    var isAdmin: Bool {
-        guard let email = currentUserEmail else { return false }
-        return Self.adminEmails.contains(email)
-    }
+    /// Answered by the database (`public.is_admin()` over the `app_admins`
+    /// table, migration 0008) rather than by a list of emails compiled into the
+    /// app. The old copy here and the copy inside the RLS policies were two
+    /// lists that had to be edited together, and nothing enforced that.
+    ///
+    /// This is a convenience for routing the UI only. The real gate is in the
+    /// database: approving or rejecting goes through `set_restaurant_status`,
+    /// which re-checks admin membership itself and rejects anyone else.
+    private(set) var isAdmin = false
 
     private static let favoritesDefaultsKey = "menu.favoriteItemIDs.v1"
 
-    init() {
+    /// `loadOnStart: false` builds a store that touches no network — the unit
+    /// tests construct `AppStore()` purely to exercise pure functions, and
+    /// firing a session check and a restaurant load from `init` made every one
+    /// of them do real I/O on the side.
+    init(loadOnStart: Bool = true) {
         favoriteIDs = Self.loadPersistedFavorites()
+        guard loadOnStart else { return }
         Task {
             await checkSession()
             await loadRestaurants()
+        }
+    }
+
+    /// Turns a sign-in failure into something that names the real cause.
+    ///
+    /// Every sign-in path used to end in one fixed sentence — "البريد أو كلمة
+    /// المرور غير صحيحة" or "تعذّر الدخول بحساب قوقل" — no matter what actually
+    /// happened. A missing account, an unconfirmed email, a provider that isn't
+    /// enabled in Supabase, and a dropped connection all read identically, so
+    /// the message actively pointed the wrong way.
+    ///
+    /// Returns nil when the person simply backed out of the sheet, which is not
+    /// a failure and should show nothing. The underlying error always reaches
+    /// the console.
+    func signInFailureText(_ error: Error, arabic: Bool) -> String? {
+        let ns = error as NSError
+        let raw = error.localizedDescription
+        print("[menyu] sign-in failed — domain=\(ns.domain) code=\(ns.code) — \(raw)")
+
+        // The user dismissed Google's or Apple's sheet.
+        if ns.domain == "com.google.GIDSignIn" && ns.code == -5 { return nil }
+        if ns.domain == ASAuthorizationError.errorDomain && ns.code == ASAuthorizationError.canceled.rawValue { return nil }
+        if ns.domain == NSURLErrorDomain && ns.code == NSURLErrorCancelled { return nil }
+
+        let text = raw.lowercased()
+        switch true {
+        case ns.domain == NSURLErrorDomain,
+             text.contains("offline"), text.contains("network"), text.contains("timed out"):
+            return arabic ? "لا يوجد اتصال بالإنترنت." : "No internet connection."
+
+        case text.contains("email not confirmed"), text.contains("not confirmed"):
+            return arabic
+                ? "الحساب موجود لكن البريد غير مؤكَّد. أكّديه من لوحة Supabase أو من رسالة التأكيد."
+                : "The account exists but its email isn't confirmed."
+
+        case text.contains("invalid login credentials"), text.contains("invalid_grant"):
+            return arabic
+                ? "لا يوجد حساب بهذا البريد، أو كلمة المرور غير صحيحة. الحسابات المُنشأة بقوقل ليس لها كلمة مرور — ادخلي بزر قوقل."
+                : "No account with this email, or the password is wrong. Accounts created through Google have no password — use the Google button."
+
+        case text.contains("no api key"), text.contains("invalid api key"), text.contains("apikey"):
+            return arabic
+                ? "التطبيق يتصل بـSupabase بلا مفتاح. عبّي supabaseKey في Menu/Secrets.swift من Project Settings ← API."
+                : "The app is calling Supabase with no API key — fill in Menu/Secrets.swift."
+
+        case text.contains("provider is not enabled"), text.contains("unsupported provider"),
+             text.contains("validation_failed"):
+            return arabic
+                ? "مزوّد الدخول غير مفعَّل في Supabase. فعّليه من Authentication ← Providers."
+                : "This sign-in provider isn't enabled in Supabase."
+
+        case text.contains("audience"), text.contains("invalid claim"), text.contains("bad_jwt"),
+             text.contains("client id"), text.contains("client_id"):
+            return arabic
+                ? "Supabase رفض رمز قوقل: معرّف العميل غير مسجَّل عنده. أضيفيه في Authentication ← Providers ← Google ← Authorized Client IDs."
+                : "Supabase rejected the Google token: this client id isn't registered under the Google provider."
+
+        case text.contains("over_email_send_rate"), text.contains("rate limit"), ns.code == 429:
+            return arabic ? "محاولات كثيرة متتالية. انتظري دقيقة ثم أعيدي المحاولة." : "Too many attempts — wait a minute."
+
+        default:
+            return arabic ? "تعذّر الدخول. التفاصيل في سجل Xcode." : "Sign-in failed. Details are in the Xcode console."
+        }
+    }
+
+    /// Raw PostgREST/network errors read like stack traces and leak backend
+    /// shape to whoever is holding the phone. Everything the user sees goes
+    /// through here; the underlying error still reaches the console.
+    func report(_ error: Error, fallback: String) {
+        let raw = error.localizedDescription
+        print("[menyu] \(fallback) — \(raw)")
+        let text = raw.lowercased()
+        if text.contains("offline") || text.contains("internet") || text.contains("network") || text.contains("timed out") {
+            errorMessage = language == .arabic ? "لا يوجد اتصال بالإنترنت." : "No internet connection."
+        } else if text.contains("row-level security") || text.contains("permission denied") || text.contains("42501") {
+            errorMessage = language == .arabic ? "ليست لديك صلاحية لهذه العملية." : "You don't have permission for this."
+        } else if text.contains("no api key") || text.contains("invalid api key") {
+            // Not a permission problem and not the user's doing: the client was
+            // built without `Secrets.swift` filled in, so every request is
+            // rejected before it reaches any policy.
+            errorMessage = language == .arabic
+                ? "إعداد الاتصال ناقص: عبّي Menu/Secrets.swift."
+                : "Connection isn't configured: fill in Menu/Secrets.swift."
+        } else if text.contains("duplicate key") || text.contains("23505") {
+            errorMessage = language == .arabic ? "هذا العنصر موجود مسبقًا." : "This item already exists."
+        } else {
+            errorMessage = fallback
         }
     }
 
@@ -71,14 +160,14 @@ final class AppStore {
             let rows: [RestaurantRow] = try await supabase
                 .from("restaurants")
                 .select("*, menu_categories(*, menu_items(*))")
-                .eq("is_published", value: true)
+                .eq("status", value: "approved")
                 .order("created_at")
                 .execute()
                 .value
             restaurants = rows.map { $0.toRestaurant() }
             if isAuthenticated { await loadMyRestaurants() }
         } catch {
-            errorMessage = error.localizedDescription
+            report(error, fallback: language == .arabic ? "تعذّر تحميل المطاعم." : "Couldn't load restaurants.")
         }
         isLoading = false
     }
@@ -95,7 +184,7 @@ final class AppStore {
                 .value
             myRestaurants = rows.map { $0.toRestaurant() }
         } catch {
-            errorMessage = error.localizedDescription
+            report(error, fallback: language == .arabic ? "تعذّر تحميل مطاعمك." : "Couldn't load your restaurants.")
         }
     }
 
@@ -105,10 +194,12 @@ final class AppStore {
     func createRestaurant(nameEn: String, nameAr: String, type: RestaurantType, descriptionEn: String, descriptionAr: String) async -> UUID? {
         guard let uid = currentUserID else { return nil }
         do {
+            // No publish flag is sent: `status` defaults to 'pending' in the
+            // database and `is_published` is generated from it, so a new
+            // restaurant cannot be created already-live even by a modified client.
             struct InsertRestaurant: Encodable {
                 let ownerID: UUID
                 let name, nameAr, type, descriptionEn, descriptionAr: String
-                let isPublished: Bool
                 enum CodingKeys: String, CodingKey {
                     case ownerID = "owner_id"
                     case name
@@ -116,18 +207,15 @@ final class AppStore {
                     case type
                     case descriptionEn = "description_en"
                     case descriptionAr = "description_ar"
-                    case isPublished = "is_published"
                 }
             }
-            struct InsertedID: Decodable { let id: UUID }
 
-            let inserted: InsertedID = try await supabase
+            let inserted: InsertedRow = try await supabase
                 .from("restaurants")
                 .insert(InsertRestaurant(
                     ownerID: uid,
                     name: nameEn, nameAr: nameAr, type: type.rawValue,
-                    descriptionEn: descriptionEn, descriptionAr: descriptionAr,
-                    isPublished: false
+                    descriptionEn: descriptionEn, descriptionAr: descriptionAr
                 ))
                 .select("id")
                 .single()
@@ -137,12 +225,64 @@ final class AppStore {
             await loadMyRestaurants()
             return inserted.id
         } catch {
-            errorMessage = error.localizedDescription
+            report(error, fallback: language == .arabic ? "تعذّر إنشاء المطعم." : "Couldn't create the restaurant.")
             return nil
         }
     }
 
-    // MARK: - Owner: Update Hours / Location / Delete Restaurant
+    // MARK: - Owner: Update Store Details / Hours / Location / Delete
+
+    /// Saves the fields the "مطعمي" form collects. Until migration 0008 there
+    /// were no `phone`/`address` columns to save them into, and the screen's
+    /// Save button showed a success toast while discarding everything typed.
+    @discardableResult
+    func updateRestaurantDetails(_ restaurantID: UUID, name: String, phone: String, address: String) async -> Bool {
+        /// Writes only the keys it was given: the name column matching the
+        /// language the form was filled in (the other keeps its own value), and
+        /// phone/address, where an empty field legitimately means "clear it".
+        struct UpdateDetails: Encodable {
+            var name: String?
+            var nameAr: String?
+            var phone: String?
+            var address: String?
+            enum CodingKeys: String, CodingKey {
+                case name
+                case nameAr = "name_ar"
+                case phone, address
+            }
+            func encode(to encoder: Encoder) throws {
+                var c = encoder.container(keyedBy: CodingKeys.self)
+                if let name { try c.encode(name, forKey: .name) }
+                if let nameAr { try c.encode(nameAr, forKey: .nameAr) }
+                try c.encode(phone, forKey: .phone)
+                try c.encode(address, forKey: .address)
+            }
+        }
+
+        func cleaned(_ s: String) -> String? {
+            let t = s.trimmingCharacters(in: .whitespacesAndNewlines)
+            return t.isEmpty ? nil : t
+        }
+
+        do {
+            let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+            var payload = UpdateDetails(phone: cleaned(phone), address: cleaned(address))
+            if !trimmedName.isEmpty {
+                if language == .arabic { payload.nameAr = trimmedName } else { payload.name = trimmedName }
+            }
+            try await supabase
+                .from("restaurants")
+                .update(payload)
+                .eq("id", value: restaurantID.uuidString)
+                .execute()
+            await loadMyRestaurants()
+            await loadRestaurants()
+            return true
+        } catch {
+            report(error, fallback: language == .arabic ? "تعذّر حفظ بيانات المتجر." : "Couldn't save the store details.")
+            return false
+        }
+    }
 
     func updateRestaurantHours(_ restaurantID: UUID, opensAt: String, closesAt: String) async {
         do {
@@ -161,7 +301,7 @@ final class AppStore {
                 .execute()
             await loadMyRestaurants()
         } catch {
-            errorMessage = error.localizedDescription
+            report(error, fallback: language == .arabic ? "تعذّر حفظ أوقات الدوام." : "Couldn't save the hours.")
         }
     }
 
@@ -178,19 +318,22 @@ final class AppStore {
                 .execute()
             await loadMyRestaurants()
         } catch {
-            errorMessage = error.localizedDescription
+            report(error, fallback: language == .arabic ? "تعذّر حفظ الموقع." : "Couldn't save the location.")
         }
     }
 
     func deleteRestaurant(_ restaurantID: UUID) async {
         do {
             if let restaurant = myRestaurants.first(where: { $0.id == restaurantID }) {
-                var paths = restaurant.allItems.map { "\($0.id.uuidString).jpg" }
-                paths.append("restaurant-\(restaurantID.uuidString).jpg")
-                try? await supabase.storage.from("menu-images").remove(paths: paths)
+                let paths = (restaurant.allItems.map(\.imageURL) + [restaurant.imageURL])
+                    .compactMap(Self.storagePath(from:))
+                if !paths.isEmpty {
+                    try? await supabase.storage.from("menu-images").remove(paths: paths)
+                }
             }
             try await supabase.from("restaurants").delete().eq("id", value: restaurantID.uuidString).execute()
             await loadMyRestaurants()
+            await loadRestaurants()
             // Always leave selectedRestaurantID pointing at something real — otherwise
             // OwnerDashboardView is stuck showing its loading spinner forever with
             // nothing left to re-select it.
@@ -198,35 +341,67 @@ final class AppStore {
                 selectedRestaurantID = myRestaurants.first?.id
             }
         } catch {
-            errorMessage = error.localizedDescription
+            report(error, fallback: language == .arabic ? "تعذّر حذف المطعم." : "Couldn't delete the restaurant.")
         }
     }
 
-    // MARK: - Owner: Item Image
+    // MARK: - Owner: Images
+
+    private struct UpdateImage: Encodable {
+        let imageURL: String
+        enum CodingKeys: String, CodingKey { case imageURL = "image_url" }
+    }
+
+    /// The object path inside the `menu-images` bucket, read back out of a
+    /// stored public URL. Deletes have to target the object that actually
+    /// exists rather than re-deriving a naming convention, because the
+    /// convention changed in 0008 and old rows still point at the old one.
+    /// `nonisolated`: pure string work that touches no state on the class, so
+    /// it does not need the main actor — and without this it can't be called
+    /// from a synchronous, non-isolated context such as a plain test method.
+    nonisolated static func storagePath(from urlString: String?) -> String? {
+        guard let urlString, let range = urlString.range(of: "/menu-images/") else { return nil }
+        var path = String(urlString[range.upperBound...])
+        if let q = path.firstIndex(of: "?") { path = String(path[..<q]) }
+        guard !path.isEmpty else { return nil }
+        return path.removingPercentEncoding ?? path
+    }
+
+    /// Every upload writes a NEW object name under the owning restaurant's
+    /// folder, then removes the one it replaced.
+    ///
+    /// The folder is what migration 0008's storage policies check, so a vendor
+    /// can only write inside their own restaurant. The random suffix is what
+    /// makes a replaced photo appear immediately: the old scheme reused one
+    /// fixed name with `cacheControl: 3600`, so the public URL never changed
+    /// and the previous image kept being served for up to an hour.
+    private func uploadImage(_ data: Data, restaurantID: UUID, prefix: String, replacing previous: String?) async throws -> String {
+        let path = "\(restaurantID.uuidString)/\(prefix)-\(UUID().uuidString).jpg"
+        try await supabase.storage.from("menu-images").upload(
+            path, data: data,
+            options: FileOptions(cacheControl: "3600", contentType: "image/jpeg", upsert: false)
+        )
+        if let old = Self.storagePath(from: previous), old != path {
+            try? await supabase.storage.from("menu-images").remove(paths: [old])
+        }
+        return try supabase.storage.from("menu-images").getPublicURL(path: path).absoluteString
+    }
 
     @discardableResult
-    func uploadItemImage(_ itemID: UUID, imageData: Data) async -> String? {
+    func uploadItemImage(_ itemID: UUID, restaurantID: UUID, imageData: Data) async -> String? {
         do {
-            let path = "\(itemID.uuidString).jpg"
-            try await supabase.storage.from("menu-images").upload(
-                path, data: imageData,
-                options: FileOptions(cacheControl: "3600", contentType: "image/jpeg", upsert: true)
-            )
-            let publicURL = try supabase.storage.from("menu-images").getPublicURL(path: path)
-
-            struct UpdateImage: Encodable {
-                let imageURL: String
-                enum CodingKeys: String, CodingKey { case imageURL = "image_url" }
-            }
+            let previous = myRestaurants.first(where: { $0.id == restaurantID })?
+                .allItems.first(where: { $0.id == itemID })?.imageURL
+            let url = try await uploadImage(imageData, restaurantID: restaurantID, prefix: itemID.uuidString, replacing: previous)
             try await supabase
                 .from("menu_items")
-                .update(UpdateImage(imageURL: publicURL.absoluteString))
+                .update(UpdateImage(imageURL: url))
                 .eq("id", value: itemID.uuidString)
                 .execute()
             await loadMyRestaurants()
-            return publicURL.absoluteString
+            return url
         } catch {
-            errorMessage = error.localizedDescription
+            report(error, fallback: language == .arabic ? "تعذّر رفع صورة المنتج." : "Couldn't upload the item photo.")
             return nil
         }
     }
@@ -234,27 +409,18 @@ final class AppStore {
     @discardableResult
     func uploadRestaurantImage(_ restaurantID: UUID, imageData: Data) async -> String? {
         do {
-            let path = "restaurant-\(restaurantID.uuidString).jpg"
-            try await supabase.storage.from("menu-images").upload(
-                path, data: imageData,
-                options: FileOptions(cacheControl: "3600", contentType: "image/jpeg", upsert: true)
-            )
-            let publicURL = try supabase.storage.from("menu-images").getPublicURL(path: path)
-
-            struct UpdateImage: Encodable {
-                let imageURL: String
-                enum CodingKeys: String, CodingKey { case imageURL = "image_url" }
-            }
+            let previous = myRestaurants.first(where: { $0.id == restaurantID })?.imageURL
+            let url = try await uploadImage(imageData, restaurantID: restaurantID, prefix: "logo", replacing: previous)
             try await supabase
                 .from("restaurants")
-                .update(UpdateImage(imageURL: publicURL.absoluteString))
+                .update(UpdateImage(imageURL: url))
                 .eq("id", value: restaurantID.uuidString)
                 .execute()
             await loadMyRestaurants()
             await loadRestaurants()
-            return publicURL.absoluteString
+            return url
         } catch {
-            errorMessage = error.localizedDescription
+            report(error, fallback: language == .arabic ? "تعذّر رفع شعار المتجر." : "Couldn't upload the store logo.")
             return nil
         }
     }
@@ -263,27 +429,31 @@ final class AppStore {
 
     func deleteCategory(_ categoryID: UUID) async {
         do {
-            let itemPaths = myRestaurants
+            let itemPaths = (myRestaurants
                 .flatMap(\.categories)
                 .first(where: { $0.id == categoryID })?
-                .items.map { "\($0.id.uuidString).jpg" } ?? []
+                .items ?? [])
+                .compactMap { Self.storagePath(from: $0.imageURL) }
             if !itemPaths.isEmpty {
                 try? await supabase.storage.from("menu-images").remove(paths: itemPaths)
             }
             try await supabase.from("menu_categories").delete().eq("id", value: categoryID.uuidString).execute()
             await loadMyRestaurants()
         } catch {
-            errorMessage = error.localizedDescription
+            report(error, fallback: language == .arabic ? "تعذّر حذف التصنيف." : "Couldn't delete the category.")
         }
     }
 
     func deleteItem(_ itemID: UUID) async {
         do {
-            try? await supabase.storage.from("menu-images").remove(paths: ["\(itemID.uuidString).jpg"])
+            let path = myRestaurants.flatMap(\.allItems).first(where: { $0.id == itemID })?.imageURL
+            if let path = Self.storagePath(from: path) {
+                try? await supabase.storage.from("menu-images").remove(paths: [path])
+            }
             try await supabase.from("menu_items").delete().eq("id", value: itemID.uuidString).execute()
             await loadMyRestaurants()
         } catch {
-            errorMessage = error.localizedDescription
+            report(error, fallback: language == .arabic ? "تعذّر حذف المنتج." : "Couldn't delete the item.")
         }
     }
 
@@ -304,32 +474,39 @@ final class AppStore {
                 .value
             pendingRestaurants = rows.map { $0.toRestaurant() }
         } catch {
-            errorMessage = error.localizedDescription
+            report(error, fallback: language == .arabic ? "تعذّر تحميل الطلبات." : "Couldn't load the review queue.")
         }
     }
 
-    private struct RestaurantStatusUpdate: Encodable {
-        let isPublished: Bool
+    private struct SetStatusParams: Encodable {
+        let restaurantID: UUID
         let status: String
         enum CodingKeys: String, CodingKey {
-            case isPublished = "is_published"
-            case status
+            case restaurantID = "p_restaurant_id"
+            case status = "p_status"
+        }
+    }
+
+    /// One call for all three transitions. It writes `status` only — the
+    /// `is_published` column is generated from it — so the two can no longer
+    /// disagree, and it re-checks admin membership inside the database, so the
+    /// `guard isAdmin` below is a UI convenience rather than the actual gate.
+    private func setStatus(_ restaurantID: UUID, _ status: String, failure: String) async {
+        do {
+            try await supabase
+                .rpc("set_restaurant_status", params: SetStatusParams(restaurantID: restaurantID, status: status))
+                .execute()
+            await loadPendingRestaurants()
+            await loadRestaurants()
+        } catch {
+            report(error, fallback: failure)
         }
     }
 
     func approveRestaurant(_ restaurantID: UUID) async {
         guard isAdmin else { return }
-        do {
-            try await supabase
-                .from("restaurants")
-                .update(RestaurantStatusUpdate(isPublished: true, status: "approved"))
-                .eq("id", value: restaurantID.uuidString)
-                .execute()
-            await loadPendingRestaurants()
-            await loadRestaurants()
-        } catch {
-            errorMessage = error.localizedDescription
-        }
+        await setStatus(restaurantID, "approved",
+                        failure: language == .arabic ? "تعذّر اعتماد المطعم." : "Couldn't approve the restaurant.")
     }
 
     /// Permanently declines a pending application — it drops out of the
@@ -338,33 +515,16 @@ final class AppStore {
     /// unpublished from the owner's point of view.
     func rejectRestaurant(_ restaurantID: UUID) async {
         guard isAdmin else { return }
-        do {
-            try await supabase
-                .from("restaurants")
-                .update(RestaurantStatusUpdate(isPublished: false, status: "rejected"))
-                .eq("id", value: restaurantID.uuidString)
-                .execute()
-            await loadPendingRestaurants()
-        } catch {
-            errorMessage = error.localizedDescription
-        }
+        await setStatus(restaurantID, "rejected",
+                        failure: language == .arabic ? "تعذّر رفض الطلب." : "Couldn't reject the request.")
     }
 
     /// Pulls an already-live restaurant back to pending — it disappears from
     /// customer surfaces immediately and returns to the review queue.
     func suspendRestaurant(_ restaurantID: UUID) async {
         guard isAdmin else { return }
-        do {
-            try await supabase
-                .from("restaurants")
-                .update(RestaurantStatusUpdate(isPublished: false, status: "pending"))
-                .eq("id", value: restaurantID.uuidString)
-                .execute()
-            await loadPendingRestaurants()
-            await loadRestaurants()
-        } catch {
-            errorMessage = error.localizedDescription
-        }
+        await setStatus(restaurantID, "pending",
+                        failure: language == .arabic ? "تعذّر إيقاف النشر." : "Couldn't suspend the restaurant.")
     }
 
     // MARK: - Auth
@@ -374,9 +534,29 @@ final class AppStore {
             let session = try await supabase.auth.session
             currentUserID = session.user.id
             currentUserEmail = session.user.email
+            await refreshAdminFlag()
         } catch {
             currentUserID = nil
             currentUserEmail = nil
+            isAdmin = false
+        }
+    }
+
+    private func refreshAdminFlag() async {
+        guard isAuthenticated else { isAdmin = false; return }
+        do {
+            // Read as raw bytes rather than decoding: the function returns a
+            // bare JSON scalar (`true`), and a top-level fragment is exactly the
+            // shape a JSON decoder is least dependable about.
+            let response = try await supabase.rpc("is_admin").execute()
+            let raw = String(data: response.data, encoding: .utf8)?
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .lowercased()
+            isAdmin = (raw == "true")
+        } catch {
+            // Never fail open: an unreachable check means "not an admin".
+            print("[menyu] is_admin check failed — \(error.localizedDescription)")
+            isAdmin = false
         }
     }
 
@@ -391,7 +571,14 @@ final class AppStore {
         try? GIDSignIn.sharedInstance.signOut()
         currentUserID = nil
         currentUserEmail = nil
+        isAdmin = false
         myRestaurants = []
+        // Left behind before: the previous admin's review queue and the last
+        // selected restaurant stayed in memory and rendered for whoever signed
+        // in next on the same device.
+        pendingRestaurants = []
+        selectedRestaurantID = nil
+        errorMessage = nil
     }
 
     /// Permanently deletes the signed-in user's account (Apple Guideline 5.1.1(v):
@@ -400,9 +587,9 @@ final class AppStore {
     /// `auth.uid()` — see migration 0005), which cascades to every restaurant,
     /// category, and item this account owns.
     func deleteAccount() async throws {
-        let paths = myRestaurants.flatMap { r -> [String] in
-            r.allItems.map { "\($0.id.uuidString).jpg" } + ["restaurant-\(r.id.uuidString).jpg"]
-        }
+        let paths = myRestaurants.flatMap { r -> [String?] in
+            r.allItems.map(\.imageURL) + [r.imageURL]
+        }.compactMap(Self.storagePath(from:))
         if !paths.isEmpty {
             try? await supabase.storage.from("menu-images").remove(paths: paths)
         }
@@ -410,7 +597,9 @@ final class AppStore {
         try? GIDSignIn.sharedInstance.signOut()
         currentUserID = nil
         currentUserEmail = nil
+        isAdmin = false
         myRestaurants = []
+        pendingRestaurants = []
         selectedRestaurantID = nil
     }
 
@@ -511,113 +700,84 @@ final class AppStore {
 
     // MARK: - Owner: Add Category
 
-    func addCategory(to restaurantID: UUID, nameEn: String, nameAr: String) async {
+    /// Delegates to `public.add_category`, which reserves the letter and
+    /// inserts the row in one statement. The old path read
+    /// `next_category_index`, inserted, then wrote the counter back from the
+    /// app — three round trips during which a second add could reserve the
+    /// same letter. It also computed `display_order` from the current count,
+    /// which repeats a value as soon as anything has been deleted.
+    @discardableResult
+    func addCategory(to restaurantID: UUID, nameEn: String, nameAr: String) async -> Bool {
+        struct Params: Encodable {
+            let restaurantID: UUID
+            let name, nameAr: String
+            enum CodingKeys: String, CodingKey {
+                case restaurantID = "p_restaurant_id"
+                case name = "p_name"
+                case nameAr = "p_name_ar"
+            }
+        }
         do {
-            let indexRow: NextCategoryIndexRow = try await supabase
-                .from("restaurants")
-                .select("next_category_index")
-                .eq("id", value: restaurantID.uuidString)
-                .single()
-                .execute()
-                .value
-
-            let letter = letterFromIndex(indexRow.nextCategoryIndex)
-            let displayOrder = myRestaurants.first(where: { $0.id == restaurantID })?.categories.count ?? 0
-
-            struct InsertCategory: Encodable {
-                let restaurantID: UUID
-                let letter, name, nameAr: String
-                let displayOrder: Int
-                enum CodingKeys: String, CodingKey {
-                    case restaurantID = "restaurant_id"
-                    case letter, name
-                    case nameAr = "name_ar"
-                    case displayOrder = "display_order"
-                }
-            }
             try await supabase
-                .from("menu_categories")
-                .insert(InsertCategory(restaurantID: restaurantID, letter: letter,
-                                       name: nameEn, nameAr: nameAr, displayOrder: displayOrder))
+                .rpc("add_category", params: Params(restaurantID: restaurantID, name: nameEn, nameAr: nameAr))
                 .execute()
-
-            struct IncrementIndex: Encodable {
-                let nextCategoryIndex: Int
-                enum CodingKeys: String, CodingKey { case nextCategoryIndex = "next_category_index" }
-            }
-            try await supabase
-                .from("restaurants")
-                .update(IncrementIndex(nextCategoryIndex: indexRow.nextCategoryIndex + 1))
-                .eq("id", value: restaurantID.uuidString)
-                .execute()
-
             await loadMyRestaurants()
+            return true
         } catch {
-            errorMessage = error.localizedDescription
+            report(error, fallback: language == .arabic ? "تعذّرت إضافة التصنيف." : "Couldn't add the category.")
+            return false
         }
     }
 
     // MARK: - Owner: Add Item
 
-    func addItem(to categoryID: UUID, restaurantID: UUID, nameEn: String, nameAr: String, price: Double) async {
+    /// Delegates to `public.add_item` for the same reason as `addCategory`,
+    /// and returns the new row's id.
+    ///
+    /// That id is what fixes photo attachment: the caller used to re-read the
+    /// category and take `items.last`, but the list is sorted by
+    /// `display_order`, so after any deletion the last element could be a
+    /// different, older item — and the freshly picked photo was written onto it.
+    func addItem(to categoryID: UUID, restaurantID: UUID, nameEn: String, nameAr: String, price: Double) async -> UUID? {
+        struct Params: Encodable {
+            let categoryID: UUID
+            let name, nameAr: String
+            let price: Double
+            enum CodingKeys: String, CodingKey {
+                case categoryID = "p_category_id"
+                case name = "p_name"
+                case nameAr = "p_name_ar"
+                case price = "p_price"
+            }
+        }
         do {
-            let catInfo: CategoryInfoRow = try await supabase
-                .from("menu_categories")
-                .select("letter, next_item_number")
-                .eq("id", value: categoryID.uuidString)
-                .single()
+            let response = try await supabase
+                .rpc("add_item", params: Params(categoryID: categoryID, name: nameEn, nameAr: nameAr, price: price))
                 .execute()
-                .value
-
-            let code = catInfo.letter + String(format: "%02d", catInfo.nextItemNumber)
-            let displayOrder = myRestaurants
-                .first(where: { $0.id == restaurantID })?
-                .categories.first(where: { $0.id == categoryID })?
-                .items.count ?? 0
-
-            struct InsertItem: Encodable {
-                let categoryID: UUID
-                let code, name, nameAr: String
-                let price: Double
-                let displayOrder: Int
-                enum CodingKeys: String, CodingKey {
-                    case categoryID = "category_id"
-                    case code, name
-                    case nameAr = "name_ar"
-                    case price
-                    case displayOrder = "display_order"
-                }
-            }
-            try await supabase
-                .from("menu_items")
-                .insert(InsertItem(categoryID: categoryID, code: code, name: nameEn,
-                                   nameAr: nameAr, price: price, displayOrder: displayOrder))
-                .execute()
-
-            struct IncrementItemNumber: Encodable {
-                let nextItemNumber: Int
-                enum CodingKeys: String, CodingKey { case nextItemNumber = "next_item_number" }
-            }
-            try await supabase
-                .from("menu_categories")
-                .update(IncrementItemNumber(nextItemNumber: catInfo.nextItemNumber + 1))
-                .eq("id", value: categoryID.uuidString)
-                .execute()
-
+            // A function returning a composite comes back as an object, but
+            // accept a one-element array too rather than lose the new row's id
+            // — losing it is what sends the photo to the wrong item.
+            let decoder = JSONDecoder()
+            let created = (try? decoder.decode(InsertedRow.self, from: response.data))
+                ?? (try? decoder.decode([InsertedRow].self, from: response.data))?.first
             await loadMyRestaurants()
+            return created?.id
         } catch {
-            errorMessage = error.localizedDescription
+            report(error, fallback: language == .arabic ? "تعذّرت إضافة المنتج." : "Couldn't add the item.")
+            return nil
         }
     }
 
     // MARK: - Owner: Toggle Availability
 
-    func toggleAvailability(itemID: UUID, categoryID: UUID, restaurantID: UUID) async {
-        guard let current = myRestaurants
-            .first(where: { $0.id == restaurantID })?
-            .categories.first(where: { $0.id == categoryID })?
-            .items.first(where: { $0.id == itemID }) else { return }
-
+    /// Writes the requested state directly.
+    ///
+    /// It used to take no value and send `!current.isAvailable`, read from the
+    /// local cache. Two quick taps both read the same cached value before either
+    /// reload landed, so both wrote the same result while the switch had moved
+    /// twice — leaving the toggle showing one thing and the database holding
+    /// another until something forced a refresh.
+    func setAvailability(itemID: UUID, isAvailable: Bool) async {
         do {
             struct UpdateAvailability: Encodable {
                 let isAvailable: Bool
@@ -625,12 +785,12 @@ final class AppStore {
             }
             try await supabase
                 .from("menu_items")
-                .update(UpdateAvailability(isAvailable: !current.isAvailable))
+                .update(UpdateAvailability(isAvailable: isAvailable))
                 .eq("id", value: itemID.uuidString)
                 .execute()
             await loadMyRestaurants()
         } catch {
-            errorMessage = error.localizedDescription
+            report(error, fallback: language == .arabic ? "تعذّر تغيير حالة التوفّر." : "Couldn't change availability.")
         }
     }
 
@@ -648,21 +808,26 @@ final class AppStore {
                 .execute()
             await loadMyRestaurants()
         } catch {
-            errorMessage = error.localizedDescription
+            report(error, fallback: language == .arabic ? "تعذّر حفظ السعر." : "Couldn't save the price.")
         }
     }
 
     // MARK: - Search
 
+    /// Code matching stays exact (a code is an identifier, not free text).
+    /// Name matching folds hamza/ta-marbuta/alef-maqsura and diacritics, so
+    /// searching "اسبريسو" finds "إسبريسو" — previously it did not, because the
+    /// Arabic branch was a plain literal `contains`.
     func search(query: String) -> [(restaurant: Restaurant, item: MenuItem)] {
         let q = query.trimmingCharacters(in: .whitespaces)
         guard !q.isEmpty else { return [] }
-        let qLower = q.lowercased()
+        let folded = q.searchFolded
+        guard !folded.isEmpty else { return [] }
         return restaurants.flatMap { r in
             r.allItems.filter { item in
-                item.code.lowercased() == qLower ||
-                item.name.lowercased().contains(qLower) ||
-                item.nameAr.contains(q)
+                item.code.searchFolded == folded ||
+                item.name.searchFolded.contains(folded) ||
+                item.nameAr.searchFolded.contains(folded)
             }.map { (r, $0) }
         }
     }
@@ -683,8 +848,4 @@ final class AppStore {
         return top
     }
 
-    private func letterFromIndex(_ index: Int) -> String {
-        guard index >= 0 && index < 26 else { return "?" }
-        return String(UnicodeScalar(65 + index)!)
-    }
 }

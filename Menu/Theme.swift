@@ -269,6 +269,220 @@ extension ButtonStyle where Self == MSecondaryButtonStyle {
     static func mSecondary(fullWidth: Bool = true) -> MSecondaryButtonStyle { MSecondaryButtonStyle(fullWidth: fullWidth) }
 }
 
+/// Compact pill for inline actions — sign out, "add item", "suspend". These
+/// were hand-rolled per screen with their own paddings and radii, so the same
+/// action looked slightly different on every surface.
+struct MPillButtonStyle: ButtonStyle {
+    var tint: Color = .mAccent
+    /// `true` fills with `tint` and writes in white; `false` writes in `tint`
+    /// on a neutral chip fill, for secondary inline actions.
+    var filled: Bool = true
+    /// The admin surface is near-black, where the light chip fill disappears —
+    /// this swaps it for a translucent white the way that screen already did by
+    /// hand.
+    var onDark: Bool = false
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.plexArabic(12.5, weight: .bold))
+            .foregroundStyle(filled ? .white : (onDark ? .white : tint))
+            .padding(.horizontal, 15)
+            .padding(.vertical, 9)
+            .background(background(configuration.isPressed))
+            .clipShape(Capsule())
+    }
+
+    private func background(_ pressed: Bool) -> Color {
+        if filled { return pressed ? tint.opacity(0.85) : tint }
+        if onDark { return Color.white.opacity(pressed ? 0.22 : 0.12) }
+        return pressed ? Color.mLine : Color.mChipFill
+    }
+}
+
+extension ButtonStyle where Self == MPillButtonStyle {
+    static func mPill(_ tint: Color = .mAccent, filled: Bool = true, onDark: Bool = false) -> MPillButtonStyle {
+        MPillButtonStyle(tint: tint, filled: filled, onDark: onDark)
+    }
+}
+
+/// Destructive actions in the brand's own deep terracotta rather than the
+/// system's red `Button(role: .destructive)`, which ignores every token here
+/// and reads as a foreign control.
+struct MDestructiveButtonStyle: ButtonStyle {
+    var fullWidth: Bool = true
+    /// `true` draws a bordered pill; `false` is bare text, for the quietest
+    /// destructive actions (deleting your own account).
+    var bordered: Bool = true
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.plexArabic(13.5, weight: .bold))
+            .foregroundStyle(Color.mAccent800)
+            .padding(.vertical, bordered ? 13 : 6)
+            .frame(maxWidth: fullWidth ? .infinity : nil)
+            .background(bordered ? (configuration.isPressed ? Color.mAccent100 : Color.clear) : Color.clear)
+            .clipShape(Capsule())
+            .overlay {
+                if bordered {
+                    Capsule().strokeBorder(Color.mAccent300, lineWidth: 1)
+                }
+            }
+            .opacity(configuration.isPressed && !bordered ? 0.6 : 1)
+    }
+}
+
+extension ButtonStyle where Self == MDestructiveButtonStyle {
+    static func mDestructive(fullWidth: Bool = true, bordered: Bool = true) -> MDestructiveButtonStyle {
+        MDestructiveButtonStyle(fullWidth: fullWidth, bordered: bordered)
+    }
+}
+
+/// A tappable settings row. Rows that wrapped their whole content in a plain
+/// `Button` inherited the system accent, so the label, value and chevron all
+/// turned tinted; `.plain` fixes that but then loses any pressed feedback.
+/// This keeps the content's own colors and adds a surface press state.
+struct MRowButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .contentShape(Rectangle())
+            .background(configuration.isPressed ? Color.mChipFill : Color.clear)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+    }
+}
+
+extension ButtonStyle where Self == MRowButtonStyle {
+    static var mRow: MRowButtonStyle { MRowButtonStyle() }
+}
+
+// MARK: - Confirmation
+
+/// Replaces `confirmationDialog`, which renders a system action sheet with
+/// system typography and a system red button — the one piece of chrome that
+/// stayed foreign on every destructive action in the app.
+///
+/// Present with `.sheet(isPresented:)`; it sizes itself to its content.
+struct MConfirmSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let title: String
+    let message: String
+    let confirmTitle: String
+    let cancelTitle: String
+    var tint: Color = .mAccent
+    let onConfirm: () -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Capsule()
+                .fill(Color.mLine)
+                .frame(width: 42, height: 4)
+                .padding(.top, 10)
+
+            VStack(alignment: .trailing, spacing: 12) {
+                ZStack {
+                    Circle().fill(tint.opacity(0.12)).frame(width: 54, height: 54)
+                    Image(systemName: "trash")
+                        .font(.system(size: 21, weight: .medium))
+                        .foregroundStyle(tint)
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
+                .padding(.bottom, 4)
+
+                Text(title)
+                    .font(.plexArabicHeavy(18))
+                    .foregroundStyle(Color.mInk)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
+
+                Text(message)
+                    .font(.plexArabic(13))
+                    .foregroundStyle(Color.mInkSecondary)
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(4)
+                    .frame(maxWidth: .infinity)
+
+                VStack(spacing: 10) {
+                    Button {
+                        dismiss()
+                        onConfirm()
+                    } label: {
+                        Text(confirmTitle)
+                    }
+                    .buttonStyle(.mPrimary(tint))
+
+                    Button { dismiss() } label: {
+                        Text(cancelTitle)
+                    }
+                    .buttonStyle(.mSecondary())
+                }
+                .padding(.top, 6)
+            }
+            .padding(.horizontal, 24)
+            .padding(.top, 22)
+            .padding(.bottom, 28)
+        }
+        .background(Color.mBackground)
+    }
+}
+
+// MARK: - Time
+
+/// Opening-hours picker built from the app's own chips instead of the system
+/// wheel `DatePicker`. Hours run 0–23; minutes are the quarters a venue
+/// actually opens on, plus whatever odd value is already stored so an existing
+/// time is never silently rounded.
+struct MTimePicker: View {
+    @Binding var minutes: Int
+    let label: String
+
+    private var hour: Int { minutes / 60 }
+    private var minute: Int { minutes % 60 }
+
+    private var minuteOptions: [Int] {
+        let quarters = [0, 15, 30, 45]
+        return quarters.contains(minute) ? quarters : (quarters + [minute]).sorted()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(label)
+                .font(.plexArabic(11.5, weight: .bold))
+                .foregroundStyle(Color.mInkTertiary)
+                .padding(.horizontal, 4)
+
+            HStack(spacing: 6) {
+                Text(String(format: "%02d:%02d", hour, minute))
+                    .font(.plexMono(22, weight: .heavy))
+                    .foregroundStyle(Color.mInk)
+                    .environment(\.layoutDirection, .leftToRight)
+                Spacer()
+            }
+            .padding(.horizontal, 4)
+            .padding(.bottom, 2)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    ForEach(0..<24, id: \.self) { h in
+                        MFilterChip(label: String(format: "%02d", h), selected: h == hour) {
+                            minutes = h * 60 + minute
+                        }
+                    }
+                }
+                .padding(.horizontal, 4)
+            }
+
+            HStack(spacing: 6) {
+                ForEach(minuteOptions, id: \.self) { m in
+                    MFilterChip(label: String(format: ":%02d", m), selected: m == minute) {
+                        minutes = hour * 60 + m
+                    }
+                }
+                Spacer()
+            }
+            .padding(.horizontal, 4)
+        }
+    }
+}
+
 // MARK: - Chips / tags / segmented control
 
 /// A generic pill tag — replaces the type-badge/status-badge code that was
@@ -399,19 +613,33 @@ struct MPriceInputField: View {
     @State private var text: String = ""
     @FocusState private var focused: Bool
 
+    /// A cafe's prices are not whole riyals. The field used to be `numberPad`
+    /// with every non-digit stripped and the result clamped to 999, so 14.50
+    /// could not be typed at all and anything over 999 was silently rewritten —
+    /// which is also why the customer-side display could get away with
+    /// truncating to an Int for so long.
+    private static let maxPrice: Double = 99_999
+
     var body: some View {
         HStack(spacing: 6) {
             TextField("0", text: $text)
-                .keyboardType(.numberPad)
+                .keyboardType(.decimalPad)
                 .multilineTextAlignment(.center)
                 .font(.plexMono(15, weight: .bold))
-                .frame(width: 46)
+                .frame(width: 72)
                 .focused($focused)
                 .onChange(of: text) { _, newValue in
-                    let digits = newValue.filter(\.isNumber)
-                    let clamped = min(Int(digits) ?? 0, 999)
-                    text = clamped == 0 && digits.isEmpty ? "" : String(clamped)
-                    value = Double(clamped)
+                    guard !newValue.isEmpty else { value = 0; return }
+                    guard let parsed = Money.parse(newValue), parsed >= 0 else {
+                        text = String(newValue.dropLast())
+                        return
+                    }
+                    if parsed > Self.maxPrice {
+                        text = Self.display(Self.maxPrice)
+                        value = Self.maxPrice
+                    } else {
+                        value = parsed
+                    }
                 }
             Text(currencyLabel)
                 .font(.plexArabic(11.5))
@@ -421,7 +649,18 @@ struct MPriceInputField: View {
         .padding(.vertical, 5)
         .overlay(Capsule().strokeBorder(Color.mLine, lineWidth: 1))
         .environment(\.layoutDirection, .leftToRight)
-        .onAppear { text = value == 0 ? "" : "\(Int(value))" }
+        .onAppear { text = value == 0 ? "" : Self.display(value) }
+        // Re-syncs when the row is rebound to a different item, or when a
+        // reload brings a price edited elsewhere; `onAppear` alone does not
+        // fire again for a reused row.
+        .onChange(of: value) { _, newValue in
+            guard !focused else { return }
+            text = newValue == 0 ? "" : Self.display(newValue)
+        }
+    }
+
+    private static func display(_ value: Double) -> String {
+        value == value.rounded() ? String(Int(value)) : String(format: "%.2f", value)
     }
 }
 
@@ -456,11 +695,23 @@ struct MStatTile: View {
 struct MDecorCircle: View {
     let diameter: CGFloat
     let color: Color
+    /// Which corner of the containing ZStack the circle hangs off, plus how far
+    /// past it. Callers used to place these with
+    /// `.position(x: UIScreen.main.bounds.width + 30, y: -30)`, which reads the
+    /// whole device screen: wrong in a sheet, in split view, on rotation, and
+    /// deprecated besides. Anchoring to the parent keeps the same look without
+    /// asking the screen for its size.
+    var corner: Alignment = .center
+    var offset: CGSize = .zero
 
     var body: some View {
         Circle()
             .fill(color)
             .frame(width: diameter, height: diameter)
+            .offset(x: offset.width, y: offset.height)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: corner)
+            .ignoresSafeArea()
+            .allowsHitTesting(false)
     }
 }
 

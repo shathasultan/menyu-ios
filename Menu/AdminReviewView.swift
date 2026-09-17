@@ -34,12 +34,8 @@ struct AdminReviewView: View {
                     Task { await store.signOut() }
                 } label: {
                     Text(isArabic ? "خروج" : "Sign Out")
-                        .font(.plexArabic(11.5, weight: .bold))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 12).padding(.vertical, 6)
-                        .background(Color.white.opacity(0.12))
-                        .clipShape(Capsule())
                 }
+                .buttonStyle(.mPill(.white, filled: false, onDark: true))
                 Spacer()
                 HStack(spacing: 6) {
                     Text(isArabic ? "الإدارة" : "Admin")
@@ -127,32 +123,41 @@ struct AdminReviewView: View {
 private struct PendingRestaurantCard: View {
     @Environment(AppStore.self) private var store
     let restaurant: Restaurant
+    @State private var showDetail = false
 
     private var isArabic: Bool { store.language == .arabic }
 
     var body: some View {
         VStack(alignment: .trailing, spacing: 10) {
-            HStack {
-                MTag(text: isArabic ? "تحت المراجعة" : "Under Review", style: .tinted(.mAccent100, .mAccent900))
-                Spacer()
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text(restaurant.displayName(store.language))
-                        .font(.plexArabicHeavy(15.5))
-                        .foregroundStyle(Color.mInk)
-                    Text("\(restaurant.type.label(store.language)) · \(restaurant.allItems.count) \(isArabic ? "منتج" : "items")")
-                        .font(.plexArabic(11.5))
-                        .foregroundStyle(Color.mInkTertiary)
+            // Approving used to be a decision made from a name and an item
+            // count alone — there was no way to look at the menu being approved.
+            Button { showDetail = true } label: {
+                HStack {
+                    MTag(text: isArabic ? "تحت المراجعة" : "Under Review", style: .tinted(.mAccent100, .mAccent900))
+                    Spacer()
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text(restaurant.displayName(store.language))
+                            .font(.plexArabicHeavy(15.5))
+                            .foregroundStyle(Color.mInk)
+                        Text("\(restaurant.type.label(store.language)) · \(restaurant.allItems.count) \(isArabic ? "منتج" : "items")")
+                            .font(.plexArabic(11.5))
+                            .foregroundStyle(Color.mInkTertiary)
+                        Text(isArabic ? "اعرض القائمة قبل القرار" : "Review the menu first")
+                            .font(.plexArabic(10.5, weight: .bold))
+                            .foregroundStyle(Color.mAccent800)
+                    }
+                    PhotoUploadSlot(imageURL: restaurant.imageURL, size: 66, radius: MTheme.radiusLogo, tint: .mAccent100)
                 }
-                PhotoUploadSlot(imageURL: restaurant.imageURL, size: 66, radius: MTheme.radiusLogo, tint: .mAccent100)
             }
+            .buttonStyle(.plain)
 
             HStack(spacing: 9) {
-                Button(role: .destructive) {
+                Button {
                     Task { await store.rejectRestaurant(restaurant.id) }
                 } label: {
                     Text(isArabic ? "رفض" : "Reject")
                 }
-                .buttonStyle(.mSecondary(fullWidth: false))
+                .buttonStyle(.mDestructive(fullWidth: false))
 
                 Button {
                     Task { await store.approveRestaurant(restaurant.id) }
@@ -164,6 +169,131 @@ private struct PendingRestaurantCard: View {
         }
         .padding(14)
         .mCardStyle()
+        .sheet(isPresented: $showDetail) {
+            PendingRestaurantDetail(restaurant: restaurant, onDecided: { showDetail = false })
+        }
+    }
+}
+
+/// What the admin is actually approving: the venue's details and its full menu,
+/// with the same two decisions available at the bottom.
+private struct PendingRestaurantDetail: View {
+    @Environment(AppStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    let restaurant: Restaurant
+    var onDecided: () -> Void
+
+    private var isArabic: Bool { store.language == .arabic }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .trailing, spacing: 18) {
+                    HStack(spacing: 14) {
+                        VStack(alignment: .trailing, spacing: 4) {
+                            Text(restaurant.displayName(store.language))
+                                .font(.plexArabicHeavy(19))
+                                .foregroundStyle(Color.mInk)
+                            Text(restaurant.type.label(store.language))
+                                .font(.plexArabic(12))
+                                .foregroundStyle(Color.mInkTertiary)
+                            if !restaurant.displayDescription(store.language).isEmpty {
+                                Text(restaurant.displayDescription(store.language))
+                                    .font(.plexArabic(12.5))
+                                    .foregroundStyle(Color.mInkSecondary)
+                                    .multilineTextAlignment(.trailing)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                        PhotoUploadSlot(imageURL: restaurant.imageURL, size: 76, radius: MTheme.radiusLogo, tint: .mAccent100)
+                    }
+
+                    detailRow(isArabic ? "أوقات الدوام" : "Hours",
+                              [restaurant.opensAt, restaurant.closesAt].compactMap { $0 }.joined(separator: " – "))
+                    detailRow(isArabic ? "الموقع" : "Location",
+                              restaurant.hasLocation ? (isArabic ? "محدَّد" : "Set") : "")
+                    detailRow(isArabic ? "الجوال" : "Phone", restaurant.phone ?? "")
+                    detailRow(isArabic ? "العنوان" : "Address", restaurant.address ?? "")
+
+                    if restaurant.categories.isEmpty {
+                        Text(isArabic ? "لم يضف هذا المتجر أي تصنيف بعد." : "This store hasn't added any category yet.")
+                            .font(.plexArabic(12.5))
+                            .foregroundStyle(Color.mInkSecondary)
+                            .frame(maxWidth: .infinity, alignment: .trailing)
+                    }
+
+                    ForEach(restaurant.categories) { category in
+                        VStack(alignment: .trailing, spacing: 8) {
+                            HStack(spacing: 8) {
+                                Spacer()
+                                Text(category.displayName(store.language))
+                                    .font(.plexArabic(14, weight: .bold))
+                                    .foregroundStyle(Color.mInk)
+                                CodeChip(code: category.letter)
+                            }
+                            ForEach(category.items) { item in
+                                HStack(spacing: 10) {
+                                    CodeChip(code: item.code)
+                                    Text(item.displayName(store.language))
+                                        .font(.plexArabic(13))
+                                        .foregroundStyle(item.isAvailable ? Color.mInk : Color.mInkFaint)
+                                    Spacer()
+                                    Text(Money.text(item.price, language: store.language))
+                                        .font(.plexMono(13, weight: .bold))
+                                        .foregroundStyle(Color.mInkSecondary)
+                                        .environment(\.layoutDirection, .leftToRight)
+                                }
+                            }
+                        }
+                        .padding(13)
+                        .mCardStyle()
+                    }
+
+                    HStack(spacing: 9) {
+                        Button {
+                            Task { await store.rejectRestaurant(restaurant.id); onDecided(); dismiss() }
+                        } label: {
+                            Text(isArabic ? "رفض" : "Reject")
+                        }
+                        .buttonStyle(.mDestructive(fullWidth: false))
+
+                        Button {
+                            Task { await store.approveRestaurant(restaurant.id); onDecided(); dismiss() }
+                        } label: {
+                            Text(isArabic ? "اعتماد ونشر" : "Approve & Publish")
+                        }
+                        .buttonStyle(.mPrimary(.mSage))
+                    }
+                    .padding(.top, 6)
+                }
+                .padding(20)
+            }
+            .background(Color.mBackground)
+            .navigationTitle(isArabic ? "مراجعة الطلب" : "Review Request")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button(isArabic ? "إغلاق" : "Close") { dismiss() }
+                        .font(.plexArabic(14))
+                        .foregroundStyle(Color.mInkSecondary)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func detailRow(_ title: String, _ value: String) -> some View {
+        if !value.isEmpty {
+            HStack {
+                Text(value)
+                    .font(.plexArabic(12.5))
+                    .foregroundStyle(Color.mInkSecondary)
+                Spacer()
+                Text(title)
+                    .font(.plexArabic(12.5, weight: .bold))
+                    .foregroundStyle(Color.mInk)
+            }
+        }
     }
 }
 
@@ -179,12 +309,8 @@ private struct LiveRestaurantRow: View {
                 Task { await store.suspendRestaurant(restaurant.id) }
             } label: {
                 Text(isArabic ? "إيقاف" : "Suspend")
-                    .font(.plexArabic(11, weight: .bold))
-                    .foregroundStyle(Color.mInkSecondary)
-                    .padding(.horizontal, 10).padding(.vertical, 5)
-                    .background(Color.mChipFill)
-                    .clipShape(Capsule())
             }
+            .buttonStyle(.mPill(.mInkSecondary, filled: false))
             VStack(alignment: .trailing, spacing: 2) {
                 Text(restaurant.displayName(store.language))
                     .font(.plexArabicHeavy(14))

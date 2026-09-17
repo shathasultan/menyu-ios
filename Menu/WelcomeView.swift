@@ -12,10 +12,8 @@ struct WelcomeView: View {
         ZStack {
             Color.mBackground.ignoresSafeArea()
 
-            MDecorCircle(diameter: 300, color: .mAccent100)
-                .position(x: UIScreen.main.bounds.width + 30, y: -30)
-            MDecorCircle(diameter: 170, color: .mSage100)
-                .position(x: -30, y: 190)
+            MDecorCircle(diameter: 300, color: .mAccent100, corner: .topTrailing, offset: CGSize(width: 180, height: -180))
+            MDecorCircle(diameter: 170, color: .mSage100, corner: .topLeading, offset: CGSize(width: -115, height: 105))
 
             VStack(spacing: 0) {
                 MenyuMascot(variant: .default, bobDuration: 3.4)

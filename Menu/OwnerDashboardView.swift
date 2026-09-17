@@ -21,7 +21,7 @@ struct OwnerDashboardShell: View {
             if let restaurant = selectedRestaurant {
                 VStack(spacing: 0) {
                     header(restaurant)
-                    if !restaurant.isPublished { pendingBanner }
+                    if restaurant.status != .approved { reviewBanner(restaurant.status) }
 
                     TabView(selection: $ownerTab) {
                         MenuTab(restaurant: restaurant)
@@ -62,13 +62,8 @@ struct OwnerDashboardShell: View {
                     Task { await store.signOut() }
                 } label: {
                     Text(isArabic ? "خروج" : "Sign Out")
-                        .font(.plexArabic(11.5, weight: .bold))
-                        .foregroundStyle(Color.mSage900)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(Color.mSurface)
-                        .clipShape(Capsule())
                 }
+                .buttonStyle(.mPill(.mSage700, filled: false))
                 Spacer()
                 Text(restaurant.displayName(store.language))
                     .font(.plexArabicHeavy(17))
@@ -81,18 +76,29 @@ struct OwnerDashboardShell: View {
         .background(Color.mSage100)
     }
 
-    private var pendingBanner: some View {
-        HStack(spacing: 12) {
-            Text(isArabic
-                 ? "طلبك قيد مراجعة الإدارة. يمكنك تجهيز قائمتك الآن، وتُنشر للعملاء فور الاعتماد."
-                 : "Your request is under admin review. You can prepare your menu now — it publishes to customers the moment it's approved.")
+    /// A rejected restaurant used to be indistinguishable from a pending one:
+    /// both are simply unpublished, so its owner was shown "under review"
+    /// forever while the request had actually been declined and had dropped out
+    /// of the admin queue for good.
+    private func reviewBanner(_ status: RestaurantStatus) -> some View {
+        let rejected = status == .rejected
+        return HStack(spacing: 12) {
+            Text(rejected
+                 ? (isArabic
+                    ? "لم يُعتمد طلب نشر متجرك. تواصل مع إدارة menu لمعرفة السبب وإعادة التقديم."
+                    : "Your store wasn't approved for publishing. Contact menu's admin to find out why and reapply.")
+                 : (isArabic
+                    ? "طلبك قيد مراجعة الإدارة. يمكنك تجهيز قائمتك الآن، وتُنشر للعملاء فور الاعتماد."
+                    : "Your request is under admin review. You can prepare your menu now — it publishes to customers the moment it's approved."))
                 .font(.plexArabic(11.5))
                 .foregroundStyle(Color.mInk.opacity(0.65))
                 .multilineTextAlignment(.trailing)
 
             ZStack {
-                Circle().fill(Color.mAccent100).frame(width: 30, height: 30)
-                Image(systemName: "clock.fill").font(.system(size: 13)).foregroundStyle(Color.mAccent800)
+                Circle().fill(rejected ? Color.mChipFill : Color.mAccent100).frame(width: 30, height: 30)
+                Image(systemName: rejected ? "xmark" : "clock.fill")
+                    .font(.system(size: 13, weight: rejected ? .bold : .regular))
+                    .foregroundStyle(rejected ? Color.mInkSecondary : Color.mAccent800)
             }
         }
         .padding(.horizontal, 15)
@@ -116,6 +122,7 @@ private struct MenuTab: View {
     @State private var addItemForCategory: MenuCategory? = nil
     @State private var selectedCategoryID: MenuCategory.ID?
     @State private var confirmDeleteRestaurant = false
+    @State private var confirmDeleteCategory: MenuCategory? = nil
 
     private var isArabic: Bool { store.language == .arabic }
 
@@ -151,19 +158,23 @@ private struct MenuTab: View {
                             Text(isArabic ? "التصنيفات" : "Categories")
                                 .font(.plexArabicHeavy(16))
                                 .foregroundStyle(Color.mInk)
+
+                            // Moved off the navigation bar: a system toolbar
+                            // item can't take the brand's pill treatment, and a
+                            // bare "+" gave no hint of what it adds.
+                            Button { showAddCategory = true } label: {
+                                Text(isArabic ? "تصنيف جديد" : "New Category")
+                            }
+                            .buttonStyle(.mPill(.mSage700, filled: false))
+
                             Spacer()
                             if let category = activeCategory {
                                 Button {
                                     addItemForCategory = category
                                 } label: {
-                                    Text(isArabic ? "+ أضف منتج" : "+ Add Item")
-                                        .font(.plexArabic(12.5, weight: .bold))
-                                        .foregroundStyle(.white)
-                                        .padding(.horizontal, 15)
-                                        .padding(.vertical, 9)
-                                        .background(Color.mAccent)
-                                        .clipShape(Capsule())
+                                    Text(isArabic ? "أضف منتجًا" : "Add Item")
                                 }
+                                .buttonStyle(.mPill(.mAccent))
                             }
                         }
 
@@ -174,12 +185,12 @@ private struct MenuTab: View {
                                 }
                             }
 
-                            Button(role: .destructive) {
-                                deleteCategory(category)
+                            Button {
+                                confirmDeleteCategory = category
                             } label: {
-                                Label(isArabic ? "حذف هذا التصنيف" : "Delete This Category", systemImage: "trash")
-                                    .font(.plexArabic(12.5, weight: .semibold))
+                                Text(isArabic ? "حذف هذا التصنيف" : "Delete This Category")
                             }
+                            .buttonStyle(.mDestructive())
                             .padding(.top, 4)
                         }
                     }
@@ -195,33 +206,45 @@ private struct MenuTab: View {
                         .background(Color.mAccent100)
                         .clipShape(RoundedRectangle(cornerRadius: MTheme.radius, style: .continuous))
 
-                    Button(role: .destructive) {
+                    Button {
                         confirmDeleteRestaurant = true
                     } label: {
                         Text(isArabic ? "حذف المطعم نهائيًا" : "Delete Restaurant Permanently")
-                            .font(.plexArabic(13.5, weight: .semibold))
                     }
+                    .buttonStyle(.mDestructive())
                     .padding(.top, 8)
                 }
                 .padding(20)
             }
             .background(Color.mBackground)
             .navigationTitle(isArabic ? "المنيو" : "Menu")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button { showAddCategory = true } label: { Image(systemName: "plus") }
-                }
-            }
-            .confirmationDialog(
-                isArabic
-                    ? "حذف \(restaurant.displayName(store.language)) نهائيًا؟ كل التصنيفات والمنتجات تُحذف معه، ولا يمكن التراجع."
-                    : "Permanently delete \(restaurant.displayName(store.language))? All its categories and items go with it — this can't be undone.",
-                isPresented: $confirmDeleteRestaurant,
-                titleVisibility: .visible
-            ) {
-                Button(isArabic ? "حذف نهائيًا" : "Delete Permanently", role: .destructive) {
+            // كانت confirmationDialog نظامية: خطّها وزرّها الأحمر من النظام،
+            // وهي آخر قطعة غريبة عن التصميم في كل عملية حذف.
+            .sheet(isPresented: $confirmDeleteRestaurant) {
+                MConfirmSheet(
+                    title: isArabic ? "حذف المطعم نهائيًا؟" : "Delete this restaurant?",
+                    message: isArabic
+                        ? "\(restaurant.displayName(store.language)) وكل تصنيفاته ومنتجاته تُحذف معه، ولا يمكن التراجع."
+                        : "\(restaurant.displayName(store.language)) and every category and item in it will be removed. This can't be undone.",
+                    confirmTitle: isArabic ? "حذف نهائيًا" : "Delete Permanently",
+                    cancelTitle: isArabic ? "إلغاء" : "Cancel"
+                ) {
                     Task { await store.deleteRestaurant(restaurant.id) }
                 }
+                .presentationDetents([.height(400)])
+            }
+            .sheet(item: $confirmDeleteCategory) { category in
+                MConfirmSheet(
+                    title: isArabic ? "حذف التصنيف؟" : "Delete this category?",
+                    message: isArabic
+                        ? "\(category.letter) · \(category.displayName(store.language)) — و\(category.items.count) منتجًا فيه تُحذف معه."
+                        : "\(category.letter) · \(category.displayName(store.language)) — and its \(category.items.count) items go with it.",
+                    confirmTitle: isArabic ? "حذف التصنيف" : "Delete Category",
+                    cancelTitle: isArabic ? "إلغاء" : "Cancel"
+                ) {
+                    deleteCategory(category)
+                }
+                .presentationDetents([.height(400)])
             }
             .sheet(isPresented: $showAddCategory) {
                 AddCategorySheet(restaurantID: restaurant.id)
@@ -298,7 +321,12 @@ private struct ProductCard: View {
                     get: { isAvailable },
                     set: { newValue in
                         isAvailable = newValue
-                        Task { await store.toggleAvailability(itemID: item.id, categoryID: categoryID, restaurantID: restaurantID) }
+                        // Sends the value the switch is now showing. The old
+                        // call sent "the opposite of whatever is in the cache",
+                        // so two quick taps both read the same cached value and
+                        // wrote the same result — the switch and the database
+                        // then disagreed until the next reload.
+                        Task { await store.setAvailability(itemID: item.id, isAvailable: newValue) }
                     }
                 ))
             }
@@ -335,6 +363,11 @@ private struct ProductCard: View {
             priceValue = item.price
             isAvailable = item.isAvailable
         }
+        // A row in a ForEach is reused, so `onAppear` does not fire again after
+        // a reload — without this the card kept showing the price and
+        // availability it was first built with, even once the data had moved on.
+        .onChange(of: item.price) { _, newValue in priceValue = newValue }
+        .onChange(of: item.isAvailable) { _, newValue in isAvailable = newValue }
     }
 }
 
@@ -405,6 +438,7 @@ private struct VenueTab: View {
                     } label: {
                         infoRow(icon: "clock", title: isArabic ? "أوقات الدوام" : "Hours", value: hoursText)
                     }
+                    .buttonStyle(.mRow)
                     Button {
                         showLocationPicker = true
                     } label: {
@@ -412,6 +446,7 @@ private struct VenueTab: View {
                                 value: restaurant.hasLocation ? (isArabic ? "محدَّد" : "Set") : (isArabic ? "لم يُحدَّد" : "Not set"),
                                 valueColor: restaurant.hasLocation ? .mSage700 : .mInkFaint)
                     }
+                    .buttonStyle(.mRow)
 
                     Button {
                         save()
@@ -425,10 +460,13 @@ private struct VenueTab: View {
             }
             .background(Color.mBackground)
             .navigationTitle(isArabic ? "مطعمي" : "My Store")
-            .onAppear {
+            // Keyed on the restaurant, not on every appearance: the old
+            // `onAppear` re-seeded the form each time the tab came back, wiping
+            // whatever the vendor had typed but not yet saved.
+            .task(id: restaurant.id) {
                 name = restaurant.displayName(store.language)
-                phone = ""
-                address = ""
+                phone = restaurant.phone ?? ""
+                address = restaurant.address ?? ""
             }
             .sheet(isPresented: $showHoursEditor) { HoursEditSheet(restaurant: restaurant) }
             .sheet(isPresented: $showLocationPicker) { RestaurantLocationPickerView(restaurant: restaurant) }
@@ -447,24 +485,37 @@ private struct VenueTab: View {
         }
     }
 
+    private var statusTitle: String {
+        switch restaurant.status {
+        case .approved: return isArabic ? "متجرك منشور للعملاء" : "Your store is live for customers"
+        case .pending:  return isArabic ? "الطلب تحت المراجعة" : "Your request is under review"
+        case .rejected: return isArabic ? "الطلب غير معتمد" : "Your request wasn't approved"
+        }
+    }
+
+    private var statusDetail: String {
+        switch restaurant.status {
+        case .approved: return isArabic ? "تصل تعديلات الأسعار والتوفّر إلى العملاء لحظيًا." : "Price and availability edits reach customers instantly."
+        case .pending:  return isArabic ? "تراجع الإدارة بياناتك، والرد عادةً خلال يوم عمل." : "Admin is reviewing your details — a response usually comes within a business day."
+        case .rejected: return isArabic ? "متجرك لا يظهر للعملاء. راجع إدارة menu لمعرفة السبب." : "Your store isn't visible to customers. Contact menu's admin to find out why."
+        }
+    }
+
     private var statusCard: some View {
-        HStack {
+        let live = restaurant.status == .approved
+        let declined = restaurant.status == .rejected
+        return HStack {
             VStack(alignment: .trailing, spacing: 4) {
-                Text(restaurant.isPublished
-                     ? (isArabic ? "متجرك منشور للعملاء" : "Your store is live for customers")
-                     : (isArabic ? "الطلب تحت المراجعة" : "Your request is under review"))
-                    .font(.plexArabicHeavy(14))
-                Text(restaurant.isPublished
-                     ? (isArabic ? "تصل تعديلات الأسعار والتوفّر إلى العملاء لحظيًا." : "Price and availability edits reach customers instantly.")
-                     : (isArabic ? "تراجع الإدارة بياناتك، والرد عادةً خلال يوم عمل." : "Admin is reviewing your details — a response usually comes within a business day."))
+                Text(statusTitle).font(.plexArabicHeavy(14))
+                Text(statusDetail)
                     .font(.plexArabic(11.5))
                     .multilineTextAlignment(.trailing)
             }
         }
         .frame(maxWidth: .infinity, alignment: .trailing)
-        .foregroundStyle(restaurant.isPublished ? Color.mSage900 : Color.mAccent900)
+        .foregroundStyle(live ? Color.mSage900 : (declined ? Color.mInkSecondary : Color.mAccent900))
         .padding(15)
-        .background(restaurant.isPublished ? Color.mSage100 : Color.mAccent100)
+        .background(live ? Color.mSage100 : (declined ? Color.mChipFill : Color.mAccent100))
         .clipShape(RoundedRectangle(cornerRadius: MTheme.radius, style: .continuous))
     }
 
@@ -489,13 +540,18 @@ private struct VenueTab: View {
         return "\(opens) – \(closes)"
     }
 
+    /// Previously this function saved nothing at all: it flipped `isSaving`
+    /// back and showed the success toast, while the name, phone, and address
+    /// the vendor had just typed were discarded. `phone`/`address` now have
+    /// columns (migration 0008) and the toast only appears if the write landed.
     private func save() {
         isSaving = true
         Task {
-            // Name/phone/address aren't yet backed by dedicated columns on
-            // `restaurants` beyond name — this saves what the schema
-            // currently supports (hours/location have their own sheets).
+            let saved = await store.updateRestaurantDetails(
+                restaurant.id, name: name, phone: phone, address: address
+            )
             isSaving = false
+            guard saved else { return }
             withAnimation { toast = isArabic ? "تم حفظ بيانات المتجر" : "Store details saved" }
             try? await Task.sleep(for: .seconds(2))
             withAnimation { toast = nil }
@@ -555,6 +611,7 @@ private struct AccountTab: View {
                                     .clipShape(RoundedRectangle(cornerRadius: MTheme.radiusSmall, style: .continuous))
                                     .overlay(RoundedRectangle(cornerRadius: MTheme.radiusSmall, style: .continuous).strokeBorder(Color.mLine, lineWidth: 1))
                                 }
+                                .buttonStyle(.mRow)
                             }
                         }
                     }
@@ -564,7 +621,7 @@ private struct AccountTab: View {
                     }
                     .buttonStyle(.mSecondary())
 
-                    Button(role: .destructive) {
+                    Button {
                         Task { await store.signOut() }
                     } label: {
                         Text(isArabic ? "تسجيل الخروج" : "Sign Out")
@@ -576,9 +633,8 @@ private struct AccountTab: View {
                         confirmDeleteAccount = true
                     } label: {
                         Text(isArabic ? "حذف الحساب نهائيًا" : "Delete Account Permanently")
-                            .font(.plexArabic(12.5, weight: .semibold))
-                            .foregroundStyle(Color.mInkMuted)
                     }
+                    .buttonStyle(.mDestructive(bordered: false))
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.top, 8)
 
@@ -595,18 +651,21 @@ private struct AccountTab: View {
             .sheet(isPresented: $showCreateRestaurant) {
                 CreateRestaurantSheet(onCreated: { newID in store.selectedRestaurantID = newID })
             }
-            .confirmationDialog(
-                isArabic
-                    ? "حذف حسابك نهائيًا؟ كل بياناتك ومطاعمك تُحذف معه، ولا يمكن التراجع."
-                    : "Permanently delete your account? All your data and restaurants go with it — this can't be undone.",
-                isPresented: $confirmDeleteAccount,
-                titleVisibility: .visible
-            ) {
-                Button(isArabic ? "حذف نهائيًا" : "Delete Permanently", role: .destructive) {
+            .sheet(isPresented: $confirmDeleteAccount) {
+                MConfirmSheet(
+                    title: isArabic ? "حذف الحساب نهائيًا؟" : "Delete your account?",
+                    message: isArabic
+                        ? "كل بياناتك ومطاعمك ومنتجاتها تُحذف معه، ولا يمكن التراجع."
+                        : "Every restaurant and item you own will be removed. This can't be undone.",
+                    confirmTitle: isArabic ? "حذف نهائيًا" : "Delete Permanently",
+                    cancelTitle: isArabic ? "إلغاء" : "Cancel"
+                ) {
                     Task {
-                        do { try await store.deleteAccount() } catch { store.errorMessage = error.localizedDescription }
+                        do { try await store.deleteAccount() }
+                        catch { store.report(error, fallback: isArabic ? "تعذّر حذف الحساب." : "Couldn't delete the account.") }
                     }
                 }
+                .presentationDetents([.height(400)])
             }
         }
     }
@@ -648,32 +707,32 @@ private struct HoursEditSheet: View {
     @Environment(AppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     let restaurant: Restaurant
-    @State private var opensAt: Date
-    @State private var closesAt: Date
+    @State private var opensAt: Int
+    @State private var closesAt: Int
     @State private var isSaving = false
 
     private var isArabic: Bool { store.language == .arabic }
 
     init(restaurant: Restaurant) {
         self.restaurant = restaurant
-        _opensAt = State(initialValue: Self.parseTime(restaurant.opensAt, defaultHour: 9))
-        _closesAt = State(initialValue: Self.parseTime(restaurant.closesAt, defaultHour: 23))
+        _opensAt = State(initialValue: Hours.minutes(restaurant.opensAt, defaultHour: 9))
+        _closesAt = State(initialValue: Hours.minutes(restaurant.closesAt, defaultHour: 23))
     }
 
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 20) {
-                    MFormField(label: isArabic ? "وقت الفتح" : "Opens at") {
-                        DatePicker("", selection: $opensAt, displayedComponents: .hourAndMinute)
-                            .labelsHidden().datePickerStyle(.wheel)
-                            .environment(\.layoutDirection, .leftToRight)
-                    }
-                    MFormField(label: isArabic ? "وقت الإغلاق" : "Closes at") {
-                        DatePicker("", selection: $closesAt, displayedComponents: .hourAndMinute)
-                            .labelsHidden().datePickerStyle(.wheel)
-                            .environment(\.layoutDirection, .leftToRight)
-                    }
+                VStack(alignment: .leading, spacing: 26) {
+                    MTimePicker(minutes: $opensAt, label: isArabic ? "وقت الفتح" : "Opens at")
+                    MTimePicker(minutes: $closesAt, label: isArabic ? "وقت الإغلاق" : "Closes at")
+
+                    Text(isArabic
+                         ? "الوقت بتوقيت مطعمك. إن كان الإغلاق قبل الفتح فالدوام يمتد بعد منتصف الليل."
+                         : "Times are the venue's own. A closing time before the opening time means the venue runs past midnight.")
+                        .font(.plexArabic(11.5))
+                        .foregroundStyle(Color.mInkFaint)
+                        .multilineTextAlignment(.trailing)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
                 }
                 .padding(20)
             }
@@ -691,7 +750,7 @@ private struct HoursEditSheet: View {
                     onAction: {
                         isSaving = true
                         Task {
-                            await store.updateRestaurantHours(restaurant.id, opensAt: Self.formatTime(opensAt), closesAt: Self.formatTime(closesAt))
+                            await store.updateRestaurantHours(restaurant.id, opensAt: Hours.text(minutes: opensAt), closesAt: Hours.text(minutes: closesAt))
                             dismiss()
                         }
                     }
@@ -700,12 +759,6 @@ private struct HoursEditSheet: View {
         }
     }
 
-    private static func parseTime(_ s: String?, defaultHour: Int) -> Date {
-        if let s, let d = timeFormatter.date(from: s) { return d }
-        return Calendar.current.date(bySettingHour: defaultHour, minute: 0, second: 0, of: Date()) ?? Date()
-    }
-    private static func formatTime(_ date: Date) -> String { timeFormatter.string(from: date) }
-    private static let timeFormatter: DateFormatter = { let f = DateFormatter(); f.dateFormat = "HH:mm"; return f }()
 }
 
 // MARK: - Create Restaurant Sheet
@@ -719,6 +772,7 @@ struct CreateRestaurantSheet: View {
     @State private var nameEn = ""
     @State private var type: RestaurantType = .restaurant
     @State private var descriptionAr = ""
+    @State private var descriptionEn = ""
     @State private var isSaving = false
 
     private var isArabic: Bool { store.language == .arabic }
@@ -740,8 +794,14 @@ struct CreateRestaurantSheet: View {
                             }
                         }
                     }
-                    MFormField(label: isArabic ? "وصف قصير (اختياري)" : "Short description (optional)") {
+                    MFormField(label: isArabic ? "وصف قصير بالعربي (اختياري)" : "Short Arabic description (optional)") {
                         TextField(isArabic ? "سطر واحد يعرّف بمطعمك" : "One line about your place", text: $descriptionAr, axis: .vertical).mFieldStyle()
+                    }
+                    // Its own field now. Both descriptions used to be set from
+                    // this one Arabic box, so an English-language customer was
+                    // shown Arabic text in an English UI.
+                    MFormField(label: isArabic ? "وصف قصير بالإنجليزي (اختياري)" : "Short English description (optional)") {
+                        TextField("One line about your place", text: $descriptionEn, axis: .vertical).mFieldStyle()
                     }
                 }
                 .padding(20)
@@ -762,9 +822,10 @@ struct CreateRestaurantSheet: View {
                         Task {
                             let finalNameEn = nameEn.isEmpty ? nameAr : nameEn
                             let finalNameAr = nameAr.isEmpty ? nameEn : nameAr
-                            if let id = await store.createRestaurant(nameEn: finalNameEn, nameAr: finalNameAr, type: type, descriptionEn: descriptionAr, descriptionAr: descriptionAr) {
-                                onCreated(id)
-                            }
+                            let created = await store.createRestaurant(nameEn: finalNameEn, nameAr: finalNameAr, type: type, descriptionEn: descriptionEn, descriptionAr: descriptionAr)
+                            isSaving = false
+                            guard let created else { return }
+                            onCreated(created)
                             dismiss()
                         }
                     }
@@ -786,11 +847,11 @@ private struct AddCategorySheet: View {
 
     private var isArabic: Bool { store.language == .arabic }
 
+    /// Read from the restaurant's own counter — the same number
+    /// `public.add_category` will use. Deriving it from `categories.count`
+    /// promised a letter that was already taken as soon as one was deleted.
     private var nextLetter: String {
-        guard let r = store.myRestaurants.first(where: { $0.id == restaurantID }) else { return "A" }
-        let usedCount = r.categories.count
-        guard usedCount < 26 else { return "?" }
-        return String(UnicodeScalar(65 + usedCount)!)
+        store.myRestaurants.first(where: { $0.id == restaurantID })?.nextCategoryLetter ?? "A"
     }
 
     var body: some View {
@@ -823,8 +884,11 @@ private struct AddCategorySheet: View {
                     onAction: {
                         isSaving = true
                         Task {
-                            await store.addCategory(to: restaurantID, nameEn: nameEn.isEmpty ? nameAr : nameEn, nameAr: nameAr.isEmpty ? nameEn : nameAr)
-                            dismiss()
+                            let added = await store.addCategory(to: restaurantID, nameEn: nameEn.isEmpty ? nameAr : nameEn, nameAr: nameAr.isEmpty ? nameEn : nameAr)
+                            isSaving = false
+                            // Stays open on failure: dismissing regardless read
+                            // as success even when nothing had been written.
+                            if added { dismiss() }
                         }
                     }
                 )
@@ -850,12 +914,13 @@ private struct AddItemSheet: View {
 
     private var isArabic: Bool { store.language == .arabic }
 
+    /// Same correction as the category letter: the category's own counter,
+    /// not `items.count + 1`, which repeats a code after any deletion.
     private var nextCode: String {
-        guard let r = store.myRestaurants.first(where: { $0.id == restaurantID }),
-              let c = r.categories.first(where: { $0.id == category.id }) else {
-            return category.letter + "01"
-        }
-        return category.letter + String(format: "%02d", c.items.count + 1)
+        store.myRestaurants
+            .first(where: { $0.id == restaurantID })?
+            .categories.first(where: { $0.id == category.id })?
+            .nextItemCode ?? category.nextItemCode
     }
 
     var body: some View {
@@ -920,13 +985,22 @@ private struct AddItemSheet: View {
                     onAction: {
                         isSaving = true
                         Task {
-                            await store.addItem(to: category.id, restaurantID: restaurantID, nameEn: nameEn.isEmpty ? nameAr : nameEn, nameAr: nameAr.isEmpty ? nameEn : nameAr, price: Double(priceText) ?? 0)
-                            if let imageData = pendingImageData,
-                               let updated = store.myRestaurants.first(where: { $0.id == restaurantID }),
-                               let newItem = updated.categories.first(where: { $0.id == category.id })?.items.last {
-                                await store.uploadItemImage(newItem.id, imageData: imageData)
+                            // `Money.parse` instead of `Double(priceText)`: an
+                            // Arabic keypad produces ١٤٫٥, which `Double` reads
+                            // as nil and the old code turned into a free item.
+                            let newItemID = await store.addItem(
+                                to: category.id, restaurantID: restaurantID,
+                                nameEn: nameEn.isEmpty ? nameAr : nameEn,
+                                nameAr: nameAr.isEmpty ? nameEn : nameAr,
+                                price: Money.parse(priceText) ?? 0
+                            )
+                            // The photo goes on the id the insert returned, not
+                            // on whatever now sorts last in the category.
+                            if let newItemID, let imageData = pendingImageData {
+                                await store.uploadItemImage(newItemID, restaurantID: restaurantID, imageData: imageData)
                             }
-                            dismiss()
+                            isSaving = false
+                            if newItemID != nil { dismiss() }
                         }
                     }
                 )

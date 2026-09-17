@@ -56,8 +56,37 @@ struct ContentView: View {
         .tint(Color.mAccent)
         .preferredColorScheme(.light)
         .background(Color.mBackground)
+        .overlay(alignment: .top) { errorBanner }
+        .animation(.easeOut(duration: 0.25), value: store.errorMessage)
         .onAppear { applyWindowDirection() }
         .onChange(of: store.language) { _, _ in applyWindowDirection() }
+    }
+
+    /// One place where every failure surfaces. `AppStore` wrote its errors into
+    /// `errorMessage` from the beginning, but only two screens ever rendered it
+    /// — so a failed add or upload anywhere else looked exactly like a success.
+    @ViewBuilder
+    private var errorBanner: some View {
+        if let message = store.errorMessage {
+            Text(message)
+                .font(.plexArabic(12.5, weight: .bold))
+                .foregroundStyle(.white)
+                .multilineTextAlignment(.center)
+                .lineSpacing(3)
+                .padding(.horizontal, 18)
+                .padding(.vertical, 12)
+                .frame(maxWidth: .infinity)
+                .background(Color.mInk)
+                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .padding(.horizontal, 16)
+                .padding(.top, 6)
+                .transition(.move(edge: .top).combined(with: .opacity))
+                .onTapGesture { store.errorMessage = nil }
+                .task(id: message) {
+                    try? await Task.sleep(for: .seconds(4))
+                    if store.errorMessage == message { store.errorMessage = nil }
+                }
+        }
     }
 
     /// SwiftUI's `.environment(\.layoutDirection, …)` mirrors pure-SwiftUI
@@ -93,7 +122,10 @@ struct ContentView: View {
             )
         case .role:
             RoleGateView(
-                onChooseCustomer: { hasCompletedRoleGate = true },
+                onChooseCustomer: {
+                    startOnAccountTab = false
+                    hasCompletedRoleGate = true
+                },
                 onChooseVendor: {
                     store.skipVendorGateOnce = true
                     startOnAccountTab = true

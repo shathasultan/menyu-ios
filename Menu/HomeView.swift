@@ -12,9 +12,14 @@ struct HomeView: View {
     var filtered: [Restaurant] {
         var list = store.restaurants
         if let type = selectedType { list = list.filter { $0.type == type } }
-        let q = query.trimmingCharacters(in: .whitespaces)
-        guard !q.isEmpty else { return list }
-        return list.filter { $0.displayName(store.language).localizedCaseInsensitiveContains(q) }
+        let folded = query.searchFolded
+        guard !folded.isEmpty else { return list }
+        // Both names, folded — typing an Arabic name with a different hamza
+        // form, or an English name while the app is in Arabic, used to find
+        // nothing at all.
+        return list.filter {
+            $0.nameAr.searchFolded.contains(folded) || $0.name.searchFolded.contains(folded)
+        }
     }
 
     var body: some View {

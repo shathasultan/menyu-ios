@@ -39,7 +39,7 @@ struct ItemDetailView: View {
                         .foregroundStyle(Color.mInkSecondary)
                 }
 
-                Text(priceText(liveItem.price))
+                Text(Money.text(liveItem.price, language: store.language))
                     .font(.plexMono(19, weight: .bold))
                     .foregroundStyle(Color.mInk)
                     .environment(\.layoutDirection, .leftToRight)
@@ -86,10 +86,5 @@ struct ItemDetailView: View {
                 }
             }
         }
-    }
-
-    private func priceText(_ price: Double) -> String {
-        let n = Int(price)
-        return store.language == .arabic ? "\(n) ر.س" : "SAR \(n)"
     }
 }

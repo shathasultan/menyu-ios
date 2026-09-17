@@ -1,4 +1,5 @@
 import SwiftUI
+import AuthenticationServices
 
 /// The tab customers see. Shown for anyone who isn't signed in, or who is
 /// signed in but doesn't own a restaurant yet — the moment `myRestaurants`
@@ -66,7 +67,7 @@ struct AccountView: View {
                 .buttonStyle(.mPrimary(.mSage))
                 .padding(.horizontal, 28)
 
-                Button(role: .destructive) {
+                Button {
                     Task { await store.signOut() }
                 } label: {
                     Text(isArabic ? "تسجيل الخروج" : "Sign Out")
@@ -91,6 +92,10 @@ struct AccountView: View {
 /// invites anyone to sign in without a reason to.
 struct VendorIntentGateView: View {
     @Environment(AppStore.self) private var store
+    /// Same key ContentView routes on. The role screen promises "you can change
+    /// it anytime", and this is what makes that true — before, the flag was set
+    /// once on first launch and nothing could ever unset it.
+    @AppStorage("menu.hasCompletedRoleGate.v1") private var hasCompletedRoleGate = false
     var onConfirm: () -> Void
     var onAdminLogin: (() -> Void)? = nil
 
@@ -130,6 +135,14 @@ struct VendorIntentGateView: View {
                 .padding(.horizontal, 28)
                 .padding(.top, 8)
 
+                Button {
+                    hasCompletedRoleGate = false
+                } label: {
+                    Text(isArabic ? "تغيير طريقة الاستخدام" : "Change how you use menu")
+                        .font(.plexArabic(12, weight: .bold))
+                        .foregroundStyle(Color.mInkMuted)
+                }
+
                 if let onAdminLogin {
                     Button(action: onAdminLogin) {
                         Text(isArabic ? "دخول الإدارة" : "Admin Login")
@@ -147,9 +160,15 @@ struct VendorIntentGateView: View {
 
 // MARK: - Sign In
 
-/// Google is the only sign-in method — no email/password, no phone number
-/// anywhere in the merchant profile. A merchant's identity is just whatever
-/// Google hands back (email); nothing else is collected at sign-in time.
+/// Google and Apple. No email/password, no phone number anywhere in the
+/// merchant profile — a merchant's identity is just the email the provider
+/// hands back, and nothing else is collected at sign-in time.
+///
+/// Apple is not optional here: `AppStore.signInWithApple` and the
+/// `com.apple.developer.applesignin` entitlement were both already in place,
+/// but no screen ever presented the button. App Store Review Guideline 4.8
+/// requires an equivalent login option wherever a third-party sign-in like
+/// Google is offered, so shipping without this button is a rejection.
 struct AccountSignInView: View {
     @Environment(AppStore.self) private var store
     @State private var isLoading = false
@@ -192,7 +211,7 @@ struct AccountSignInView: View {
                         isLoading = true
                         errorText = nil
                         do { try await store.signInWithGoogle(presenting: presenter) }
-                        catch { errorText = isArabic ? "تعذّر الدخول بحساب قوقل." : "Couldn't sign in with Google." }
+                        catch { errorText = store.signInFailureText(error, arabic: isArabic) }
                         isLoading = false
                     }
                 } label: {
@@ -212,6 +231,30 @@ struct AccountSignInView: View {
                 .buttonStyle(.mSecondary())
                 .disabled(isLoading)
 
+                SignInWithAppleButton(.continue) { request in
+                    request.requestedScopes = [.email]
+                    request.nonce = store.makeAppleNonce()
+                } onCompletion: { result in
+                    switch result {
+                    case .success(let authorization):
+                        Task {
+                            isLoading = true
+                            errorText = nil
+                            do { try await store.signInWithApple(authorization: authorization) }
+                            catch { errorText = store.signInFailureText(error, arabic: isArabic) }
+                            isLoading = false
+                        }
+                    case .failure(let error):
+                        // Backing out of the sheet is not a failure to report;
+                        // signInFailureText returns nil for that.
+                        errorText = store.signInFailureText(error, arabic: isArabic)
+                    }
+                }
+                .signInWithAppleButtonStyle(.black)
+                .frame(height: 52)
+                .clipShape(Capsule())
+                .disabled(isLoading)
+
                 Text(isArabic ? "تراجع إدارة menu حسابك قبل ظهور متجرك للعملاء." : "menu's admin reviews your account before your store appears to customers.")
                     .font(.plexArabic(11.5))
                     .foregroundStyle(Color.mInkMuted)
@@ -227,14 +270,31 @@ struct AccountSignInView: View {
 
 // MARK: - Google glyph
 
-/// A stylized four-color ring approximating the Google mark — used only on
-/// the sign-in button. Not a pixel-perfect reproduction of the official
-/// logo (that asset isn't available in this environment); swap in the real
-/// SVG if brand precision matters here.
+/// Google's sign-in branding guidelines require their own supplied mark on the
+/// button — a lookalike is grounds for rejection, so this prefers the real
+/// asset and only falls back to the four-color ring when it is missing.
+///
+/// To ship: download the "G" mark from Google's branding kit and add it to
+/// `Assets.xcassets` as an image set named `GoogleG`. Nothing else changes.
 struct GoogleGlyph: View {
     var size: CGFloat = 18
 
+    static var hasOfficialMark: Bool { UIImage(named: "GoogleG") != nil }
+
     var body: some View {
+        Group {
+            if Self.hasOfficialMark {
+                Image("GoogleG")
+                    .resizable()
+                    .scaledToFit()
+            } else {
+                approximateRing
+            }
+        }
+        .frame(width: size, height: size)
+    }
+
+    private var approximateRing: some View {
         ZStack {
             arc(0.0, 0.25, Color(hex: 0x4285F4))
             arc(0.25, 0.5, Color(hex: 0x34A853))
@@ -242,7 +302,6 @@ struct GoogleGlyph: View {
             arc(0.75, 1.0, Color(hex: 0xEA4335))
         }
         .rotationEffect(.degrees(-90))
-        .frame(width: size, height: size)
     }
 
     private func arc(_ from: CGFloat, _ to: CGFloat, _ color: Color) -> some View {

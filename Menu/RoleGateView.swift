@@ -15,8 +15,7 @@ struct RoleGateView: View {
         ZStack {
             Color.mBackground.ignoresSafeArea()
 
-            MDecorCircle(diameter: 240, color: .mAccent100)
-                .position(x: -70, y: -40)
+            MDecorCircle(diameter: 240, color: .mAccent100, corner: .topLeading, offset: CGSize(width: -190, height: -160))
 
             VStack(alignment: .trailing, spacing: 0) {
                 Text("menu.")
