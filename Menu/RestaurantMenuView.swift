@@ -277,7 +277,7 @@ private struct MenuItemRow: View {
             Spacer()
 
             if item.isAvailable {
-                Text(priceText(item.price))
+                Text(Money.text(item.price, language: store.language))
                     .font(.plexMono(15, weight: .bold))
                     .foregroundStyle(Color.mInk)
                     .environment(\.layoutDirection, .leftToRight)
@@ -301,10 +301,5 @@ private struct MenuItemRow: View {
         }
         .padding(.horizontal)
         .padding(.vertical, 13)
-    }
-
-    private func priceText(_ price: Double) -> String {
-        let n = Int(price)
-        return store.language == .arabic ? "\(n) ر.س" : "SAR \(n)"
     }
 }

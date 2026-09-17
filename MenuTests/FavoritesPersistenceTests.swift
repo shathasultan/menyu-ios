@@ -30,12 +30,12 @@ final class FavoritesPersistenceTests: XCTestCase {
     }
 
     func testNewItemStartsNotFavorited() {
-        let store = AppStore()
+        let store = AppStore(loadOnStart: false)
         XCTAssertFalse(store.isFavorite(sampleItem()))
     }
 
     func testToggleFavoriteAddsThenRemoves() {
-        let store = AppStore()
+        let store = AppStore(loadOnStart: false)
         let item = sampleItem()
 
         store.toggleFavorite(item)
@@ -48,13 +48,13 @@ final class FavoritesPersistenceTests: XCTestCase {
     func testFavoriteSurvivesAFreshAppStoreInstance() {
         let item = sampleItem()
 
-        let firstLaunch = AppStore()
+        let firstLaunch = AppStore(loadOnStart: false)
         firstLaunch.toggleFavorite(item)
         XCTAssertTrue(firstLaunch.isFavorite(item))
 
         // Simulates relaunching the app: a brand new AppStore should load the
         // same favorite back from UserDefaults instead of starting empty.
-        let secondLaunch = AppStore()
+        let secondLaunch = AppStore(loadOnStart: false)
         XCTAssertTrue(secondLaunch.isFavorite(item))
     }
 }

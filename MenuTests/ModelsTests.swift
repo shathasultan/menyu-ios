@@ -45,7 +45,7 @@ final class ModelsTests: XCTestCase {
     // MARK: - MenuCategory
 
     func testMenuCategoryDisplayNamePicksLanguage() {
-        let category = MenuCategory(id: UUID(), letter: "A", name: "Hot Drinks", nameAr: "مشروبات ساخنة", items: [])
+        let category = MenuCategory(id: UUID(), letter: "A", name: "Hot Drinks", nameAr: "مشروبات ساخنة", nextItemNumber: 1, items: [])
         XCTAssertEqual(category.displayName(.arabic), "مشروبات ساخنة")
         XCTAssertEqual(category.displayName(.english), "Hot Drinks")
     }
@@ -56,8 +56,9 @@ final class ModelsTests: XCTestCase {
         Restaurant(
             id: UUID(), ownerID: UUID(), name: "Brew Cafe", nameAr: "بريو كافيه",
             type: .cafe, descriptionEn: "Specialty coffee", descriptionAr: "قهوة مختصة",
-            isPublished: true, opensAt: "09:00", closesAt: "23:00",
+            status: .approved, opensAt: "09:00", closesAt: "23:00",
             latitude: latitude, longitude: longitude, imageURL: nil,
+            phone: nil, address: nil, nextCategoryIndex: categories.count,
             categories: categories
         )
     }
@@ -78,11 +79,11 @@ final class ModelsTests: XCTestCase {
     }
 
     func testRestaurantAllItemsFlattensEveryCategoryInOrder() {
-        let hot = MenuCategory(id: UUID(), letter: "A", name: "Hot", nameAr: "ساخن", items: [
+        let hot = MenuCategory(id: UUID(), letter: "A", name: "Hot", nameAr: "ساخن", nextItemNumber: 1, items: [
             MenuItem(id: UUID(), code: "A01", name: "Espresso", nameAr: "اسبريسو", price: 10, isAvailable: true),
             MenuItem(id: UUID(), code: "A02", name: "Latte", nameAr: "لاتيه", price: 14, isAvailable: true),
         ])
-        let cold = MenuCategory(id: UUID(), letter: "B", name: "Cold", nameAr: "بارد", items: [
+        let cold = MenuCategory(id: UUID(), letter: "B", name: "Cold", nameAr: "بارد", nextItemNumber: 1, items: [
             MenuItem(id: UUID(), code: "B01", name: "Iced Tea", nameAr: "شاي مثلج", price: 12, isAvailable: false),
         ])
         let r = makeRestaurant(categories: [hot, cold])

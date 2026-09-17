@@ -8,15 +8,27 @@ extension Restaurant {
     /// stable per-restaurant value (its id) rather than list position. The
     /// SAME formula everywhere a restaurant's logo placeholder renders — the
     /// venue detail hero and the home list card always agree on the color.
+    ///
+    /// Derived from the UUID's own bytes, never from `hashValue`: Swift seeds
+    /// `Hashable` randomly per process, so a hash-keyed tint would pick a new
+    /// color on every launch and a different one on every device.
     var placeholderTint: (bg: Color, fg: Color) {
         let ramps: [(Color, Color)] = [(.mAccent100, .mAccent700), (.mSage100, .mSage700), (.mAccent200, .mAccent800), (.mSage200, .mSage800)]
-        let index = abs(id.hashValue) % ramps.count
-        return ramps[index]
+        let bytes = withUnsafeBytes(of: id.uuid) { Array($0) }
+        let sum = bytes.reduce(0) { ($0 + Int($1)) % ramps.count }
+        return ramps[sum]
     }
 }
 
 enum Language {
     case arabic, english
+}
+
+/// The review state a restaurant is in — the single source of truth, matching
+/// the `status` column. `isPublished` is derived from it in the database (a
+/// generated column) and on the model below, so the two can never disagree.
+enum RestaurantStatus: String {
+    case pending, approved, rejected
 }
 
 enum RestaurantType: String, CaseIterable {
@@ -63,7 +75,15 @@ struct MenuCategory: Identifiable {
     let letter: String
     var name: String
     var nameAr: String
+    /// The number the database will give the next item in this category. Carried
+    /// on the model so the "auto code" preview in the add sheet shows the code
+    /// that will actually be assigned, instead of `items.count + 1` — which is a
+    /// different number the moment anything has been deleted.
+    var nextItemNumber: Int
     var items: [MenuItem]
+
+    /// The exact code `public.add_item` will mint next.
+    var nextItemCode: String { letter + String(format: "%02d", nextItemNumber) }
 
     func displayName(_ language: Language) -> String {
         language == .arabic ? nameAr : name
@@ -78,13 +98,28 @@ struct Restaurant: Identifiable {
     var type: RestaurantType
     var descriptionEn: String
     var descriptionAr: String
-    var isPublished: Bool
+    var status: RestaurantStatus
     var opensAt: String?
     var closesAt: String?
     var latitude: Double?
     var longitude: Double?
     var imageURL: String?
+    var phone: String?
+    var address: String?
+    /// The counter the database uses to mint the next category letter — same
+    /// reason as `MenuCategory.nextItemNumber`.
+    var nextCategoryIndex: Int
     var categories: [MenuCategory]
+
+    /// The exact letter `public.add_category` will mint next, or nil past Z.
+    var nextCategoryLetter: String? {
+        guard nextCategoryIndex >= 0, nextCategoryIndex < 26 else { return nil }
+        return String(UnicodeScalar(65 + nextCategoryIndex)!)
+    }
+
+    /// Derived, never stored separately — mirrors the database's generated
+    /// `is_published` column so the app can't drift from it.
+    var isPublished: Bool { status == .approved }
 
     var hasLocation: Bool { latitude != nil && longitude != nil }
 
@@ -102,11 +137,16 @@ struct Restaurant: Identifiable {
 
     /// Real open/closed, computed from the vendor's own hours — never
     /// fabricated. `nil` when hours haven't been set yet.
+    ///
+    /// Evaluated in the venue's own timezone, not the phone's: `opens_at` and
+    /// `closes_at` are stored as bare "HH:mm" local to the restaurant, so a
+    /// customer whose phone is in another timezone would otherwise be told a
+    /// Riyadh café is closed while it's open.
     var isOpenNow: Bool? {
         guard let opensAt, let closesAt,
               let open = Self.minutesSinceMidnight(opensAt),
               let close = Self.minutesSinceMidnight(closesAt) else { return nil }
-        let now = Calendar.current.dateComponents([.hour, .minute], from: Date())
+        let now = Self.venueCalendar.dateComponents([.hour, .minute], from: Date())
         guard let h = now.hour, let m = now.minute else { return nil }
         let nowMinutes = h * 60 + m
         if close > open {
@@ -116,6 +156,14 @@ struct Restaurant: Identifiable {
             return nowMinutes >= open || nowMinutes < close
         }
     }
+
+    /// Every venue in scope today is in Riyadh; when the app expands beyond one
+    /// city this becomes a per-restaurant column instead of a constant.
+    static let venueCalendar: Calendar = {
+        var c = Calendar(identifier: .gregorian)
+        c.timeZone = TimeZone(identifier: "Asia/Riyadh") ?? .current
+        return c
+    }()
 
     private static func minutesSinceMidnight(_ hhmm: String) -> Int? {
         let parts = hhmm.split(separator: ":")
@@ -136,6 +184,57 @@ struct Restaurant: Identifiable {
         }
         let km = (meters / 1000).rounded(toPlaces: 1)
         return language == .arabic ? "\(km) كم" : "\(km) km"
+    }
+}
+
+// MARK: - Money
+
+/// One price formatter for the whole app. Prices are `numeric(10,2)` in the
+/// database, so truncating with `Int(price)` silently dropped halalas — 14.50
+/// rendered as "14". Whole riyals still read as whole riyals.
+enum Money {
+    static func text(_ price: Double, language: Language) -> String {
+        let amount = formatter.string(from: NSNumber(value: price)) ?? String(format: "%.2f", price)
+        return language == .arabic ? "\(amount) ر.س" : "SAR \(amount)"
+    }
+
+    private static let formatter: NumberFormatter = {
+        let f = NumberFormatter()
+        f.numberStyle = .decimal
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.minimumFractionDigits = 0
+        f.maximumFractionDigits = 2
+        return f
+    }()
+
+    /// Reads a price the vendor typed. Accepts Arabic-Indic digits (٠١٢٣) and
+    /// an Arabic decimal separator, both of which a real Arabic keypad
+    /// produces and `Double("١٤٫٥")` rejects outright.
+    static func parse(_ input: String) -> Double? {
+        let normalized = input
+            .trimmingCharacters(in: .whitespaces)
+            .applyingTransform(.toLatin, reverse: false)?
+            .replacingOccurrences(of: "٫", with: ".")
+            .replacingOccurrences(of: "،", with: ".")
+            .replacingOccurrences(of: ",", with: ".")
+            ?? input
+        return Double(normalized)
+    }
+}
+
+// MARK: - Arabic text matching
+
+extension String {
+    /// Folds the differences that make Arabic search miss the obvious match:
+    /// hamza forms (أ إ آ → ا), ta marbuta (ة → ه), alef maqsura (ى → ي),
+    /// tatweel, and diacritics. Also lowercases, so one comparison serves both
+    /// languages.
+    var searchFolded: String {
+        var s = folding(options: [.diacriticInsensitive, .caseInsensitive, .widthInsensitive], locale: Locale(identifier: "ar"))
+        for (from, to) in [("أ", "ا"), ("إ", "ا"), ("آ", "ا"), ("ٱ", "ا"), ("ة", "ه"), ("ى", "ي"), ("ـ", "")] {
+            s = s.replacingOccurrences(of: from, with: to)
+        }
+        return s.trimmingCharacters(in: .whitespaces)
     }
 }
 

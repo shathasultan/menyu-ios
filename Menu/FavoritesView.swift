@@ -50,7 +50,7 @@ private struct FavoriteItemRow: View {
 
             Spacer()
 
-            Text(priceText(item.price))
+            Text(Money.text(item.price, language: store.language))
                 .font(.plexMono(14, weight: .bold))
                 .foregroundStyle(Color.mInk)
                 .environment(\.layoutDirection, .leftToRight)
@@ -63,10 +63,5 @@ private struct FavoriteItemRow: View {
             .buttonStyle(.plain)
         }
         .padding(.vertical, 4)
-    }
-
-    private func priceText(_ price: Double) -> String {
-        let n = Int(price)
-        return store.language == .arabic ? "\(n) ر.س" : "SAR \(n)"
     }
 }

@@ -21,7 +21,7 @@ struct OwnerDashboardShell: View {
             if let restaurant = selectedRestaurant {
                 VStack(spacing: 0) {
                     header(restaurant)
-                    if !restaurant.isPublished { pendingBanner }
+                    if restaurant.status != .approved { reviewBanner(restaurant.status) }
 
                     TabView(selection: $ownerTab) {
                         MenuTab(restaurant: restaurant)
@@ -81,18 +81,29 @@ struct OwnerDashboardShell: View {
         .background(Color.mSage100)
     }
 
-    private var pendingBanner: some View {
-        HStack(spacing: 12) {
-            Text(isArabic
-                 ? "طلبك قيد مراجعة الإدارة. يمكنك تجهيز قائمتك الآن، وتُنشر للعملاء فور الاعتماد."
-                 : "Your request is under admin review. You can prepare your menu now — it publishes to customers the moment it's approved.")
+    /// A rejected restaurant used to be indistinguishable from a pending one:
+    /// both are simply unpublished, so its owner was shown "under review"
+    /// forever while the request had actually been declined and had dropped out
+    /// of the admin queue for good.
+    private func reviewBanner(_ status: RestaurantStatus) -> some View {
+        let rejected = status == .rejected
+        return HStack(spacing: 12) {
+            Text(rejected
+                 ? (isArabic
+                    ? "لم يُعتمد طلب نشر متجرك. تواصل مع إدارة menu لمعرفة السبب وإعادة التقديم."
+                    : "Your store wasn't approved for publishing. Contact menu's admin to find out why and reapply.")
+                 : (isArabic
+                    ? "طلبك قيد مراجعة الإدارة. يمكنك تجهيز قائمتك الآن، وتُنشر للعملاء فور الاعتماد."
+                    : "Your request is under admin review. You can prepare your menu now — it publishes to customers the moment it's approved."))
                 .font(.plexArabic(11.5))
                 .foregroundStyle(Color.mInk.opacity(0.65))
                 .multilineTextAlignment(.trailing)
 
             ZStack {
-                Circle().fill(Color.mAccent100).frame(width: 30, height: 30)
-                Image(systemName: "clock.fill").font(.system(size: 13)).foregroundStyle(Color.mAccent800)
+                Circle().fill(rejected ? Color.mChipFill : Color.mAccent100).frame(width: 30, height: 30)
+                Image(systemName: rejected ? "xmark" : "clock.fill")
+                    .font(.system(size: 13, weight: rejected ? .bold : .regular))
+                    .foregroundStyle(rejected ? Color.mInkSecondary : Color.mAccent800)
             }
         }
         .padding(.horizontal, 15)
@@ -335,6 +346,11 @@ private struct ProductCard: View {
             priceValue = item.price
             isAvailable = item.isAvailable
         }
+        // A row in a ForEach is reused, so `onAppear` does not fire again after
+        // a reload — without this the card kept showing the price and
+        // availability it was first built with, even once the data had moved on.
+        .onChange(of: item.price) { _, newValue in priceValue = newValue }
+        .onChange(of: item.isAvailable) { _, newValue in isAvailable = newValue }
     }
 }
 
@@ -425,10 +441,13 @@ private struct VenueTab: View {
             }
             .background(Color.mBackground)
             .navigationTitle(isArabic ? "مطعمي" : "My Store")
-            .onAppear {
+            // Keyed on the restaurant, not on every appearance: the old
+            // `onAppear` re-seeded the form each time the tab came back, wiping
+            // whatever the vendor had typed but not yet saved.
+            .task(id: restaurant.id) {
                 name = restaurant.displayName(store.language)
-                phone = ""
-                address = ""
+                phone = restaurant.phone ?? ""
+                address = restaurant.address ?? ""
             }
             .sheet(isPresented: $showHoursEditor) { HoursEditSheet(restaurant: restaurant) }
             .sheet(isPresented: $showLocationPicker) { RestaurantLocationPickerView(restaurant: restaurant) }
@@ -447,24 +466,37 @@ private struct VenueTab: View {
         }
     }
 
+    private var statusTitle: String {
+        switch restaurant.status {
+        case .approved: return isArabic ? "متجرك منشور للعملاء" : "Your store is live for customers"
+        case .pending:  return isArabic ? "الطلب تحت المراجعة" : "Your request is under review"
+        case .rejected: return isArabic ? "الطلب غير معتمد" : "Your request wasn't approved"
+        }
+    }
+
+    private var statusDetail: String {
+        switch restaurant.status {
+        case .approved: return isArabic ? "تصل تعديلات الأسعار والتوفّر إلى العملاء لحظيًا." : "Price and availability edits reach customers instantly."
+        case .pending:  return isArabic ? "تراجع الإدارة بياناتك، والرد عادةً خلال يوم عمل." : "Admin is reviewing your details — a response usually comes within a business day."
+        case .rejected: return isArabic ? "متجرك لا يظهر للعملاء. راجع إدارة menu لمعرفة السبب." : "Your store isn't visible to customers. Contact menu's admin to find out why."
+        }
+    }
+
     private var statusCard: some View {
-        HStack {
+        let live = restaurant.status == .approved
+        let declined = restaurant.status == .rejected
+        return HStack {
             VStack(alignment: .trailing, spacing: 4) {
-                Text(restaurant.isPublished
-                     ? (isArabic ? "متجرك منشور للعملاء" : "Your store is live for customers")
-                     : (isArabic ? "الطلب تحت المراجعة" : "Your request is under review"))
-                    .font(.plexArabicHeavy(14))
-                Text(restaurant.isPublished
-                     ? (isArabic ? "تصل تعديلات الأسعار والتوفّر إلى العملاء لحظيًا." : "Price and availability edits reach customers instantly.")
-                     : (isArabic ? "تراجع الإدارة بياناتك، والرد عادةً خلال يوم عمل." : "Admin is reviewing your details — a response usually comes within a business day."))
+                Text(statusTitle).font(.plexArabicHeavy(14))
+                Text(statusDetail)
                     .font(.plexArabic(11.5))
                     .multilineTextAlignment(.trailing)
             }
         }
         .frame(maxWidth: .infinity, alignment: .trailing)
-        .foregroundStyle(restaurant.isPublished ? Color.mSage900 : Color.mAccent900)
+        .foregroundStyle(live ? Color.mSage900 : (declined ? Color.mInkSecondary : Color.mAccent900))
         .padding(15)
-        .background(restaurant.isPublished ? Color.mSage100 : Color.mAccent100)
+        .background(live ? Color.mSage100 : (declined ? Color.mChipFill : Color.mAccent100))
         .clipShape(RoundedRectangle(cornerRadius: MTheme.radius, style: .continuous))
     }
 
@@ -489,13 +521,18 @@ private struct VenueTab: View {
         return "\(opens) – \(closes)"
     }
 
+    /// Previously this function saved nothing at all: it flipped `isSaving`
+    /// back and showed the success toast, while the name, phone, and address
+    /// the vendor had just typed were discarded. `phone`/`address` now have
+    /// columns (migration 0008) and the toast only appears if the write landed.
     private func save() {
         isSaving = true
         Task {
-            // Name/phone/address aren't yet backed by dedicated columns on
-            // `restaurants` beyond name — this saves what the schema
-            // currently supports (hours/location have their own sheets).
+            let saved = await store.updateRestaurantDetails(
+                restaurant.id, name: name, phone: phone, address: address
+            )
             isSaving = false
+            guard saved else { return }
             withAnimation { toast = isArabic ? "تم حفظ بيانات المتجر" : "Store details saved" }
             try? await Task.sleep(for: .seconds(2))
             withAnimation { toast = nil }
@@ -762,9 +799,10 @@ struct CreateRestaurantSheet: View {
                         Task {
                             let finalNameEn = nameEn.isEmpty ? nameAr : nameEn
                             let finalNameAr = nameAr.isEmpty ? nameEn : nameAr
-                            if let id = await store.createRestaurant(nameEn: finalNameEn, nameAr: finalNameAr, type: type, descriptionEn: descriptionAr, descriptionAr: descriptionAr) {
-                                onCreated(id)
-                            }
+                            let created = await store.createRestaurant(nameEn: finalNameEn, nameAr: finalNameAr, type: type, descriptionEn: descriptionAr, descriptionAr: descriptionAr)
+                            isSaving = false
+                            guard let created else { return }
+                            onCreated(created)
                             dismiss()
                         }
                     }
@@ -786,11 +824,11 @@ private struct AddCategorySheet: View {
 
     private var isArabic: Bool { store.language == .arabic }
 
+    /// Read from the restaurant's own counter — the same number
+    /// `public.add_category` will use. Deriving it from `categories.count`
+    /// promised a letter that was already taken as soon as one was deleted.
     private var nextLetter: String {
-        guard let r = store.myRestaurants.first(where: { $0.id == restaurantID }) else { return "A" }
-        let usedCount = r.categories.count
-        guard usedCount < 26 else { return "?" }
-        return String(UnicodeScalar(65 + usedCount)!)
+        store.myRestaurants.first(where: { $0.id == restaurantID })?.nextCategoryLetter ?? "A"
     }
 
     var body: some View {
@@ -823,8 +861,11 @@ private struct AddCategorySheet: View {
                     onAction: {
                         isSaving = true
                         Task {
-                            await store.addCategory(to: restaurantID, nameEn: nameEn.isEmpty ? nameAr : nameEn, nameAr: nameAr.isEmpty ? nameEn : nameAr)
-                            dismiss()
+                            let added = await store.addCategory(to: restaurantID, nameEn: nameEn.isEmpty ? nameAr : nameEn, nameAr: nameAr.isEmpty ? nameEn : nameAr)
+                            isSaving = false
+                            // Stays open on failure: dismissing regardless read
+                            // as success even when nothing had been written.
+                            if added { dismiss() }
                         }
                     }
                 )
@@ -850,12 +891,13 @@ private struct AddItemSheet: View {
 
     private var isArabic: Bool { store.language == .arabic }
 
+    /// Same correction as the category letter: the category's own counter,
+    /// not `items.count + 1`, which repeats a code after any deletion.
     private var nextCode: String {
-        guard let r = store.myRestaurants.first(where: { $0.id == restaurantID }),
-              let c = r.categories.first(where: { $0.id == category.id }) else {
-            return category.letter + "01"
-        }
-        return category.letter + String(format: "%02d", c.items.count + 1)
+        store.myRestaurants
+            .first(where: { $0.id == restaurantID })?
+            .categories.first(where: { $0.id == category.id })?
+            .nextItemCode ?? category.nextItemCode
     }
 
     var body: some View {
@@ -920,13 +962,22 @@ private struct AddItemSheet: View {
                     onAction: {
                         isSaving = true
                         Task {
-                            await store.addItem(to: category.id, restaurantID: restaurantID, nameEn: nameEn.isEmpty ? nameAr : nameEn, nameAr: nameAr.isEmpty ? nameEn : nameAr, price: Double(priceText) ?? 0)
-                            if let imageData = pendingImageData,
-                               let updated = store.myRestaurants.first(where: { $0.id == restaurantID }),
-                               let newItem = updated.categories.first(where: { $0.id == category.id })?.items.last {
-                                await store.uploadItemImage(newItem.id, imageData: imageData)
+                            // `Money.parse` instead of `Double(priceText)`: an
+                            // Arabic keypad produces ١٤٫٥, which `Double` reads
+                            // as nil and the old code turned into a free item.
+                            let newItemID = await store.addItem(
+                                to: category.id, restaurantID: restaurantID,
+                                nameEn: nameEn.isEmpty ? nameAr : nameEn,
+                                nameAr: nameAr.isEmpty ? nameEn : nameAr,
+                                price: Money.parse(priceText) ?? 0
+                            )
+                            // The photo goes on the id the insert returned, not
+                            // on whatever now sorts last in the category.
+                            if let newItemID, let imageData = pendingImageData {
+                                await store.uploadItemImage(newItemID, restaurantID: restaurantID, imageData: imageData)
                             }
-                            dismiss()
+                            isSaving = false
+                            if newItemID != nil { dismiss() }
                         }
                     }
                 )

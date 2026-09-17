@@ -12,22 +12,26 @@ struct RestaurantRow: Codable {
     let descriptionEn: String
     let descriptionAr: String
     let nextCategoryIndex: Int
-    let isPublished: Bool
+    /// The review state. `is_published` also comes back on `select *`, but it's
+    /// a generated column derived from this one — decoding it too would just
+    /// give the app a second copy of the same fact to drift from.
+    let status: String
     let opensAt: String?
     let closesAt: String?
     let latitude: Double?
     let longitude: Double?
     let imageURL: String?
+    let phone: String?
+    let address: String?
     let menuCategories: [MenuCategoryRow]?
 
     enum CodingKeys: String, CodingKey {
-        case id, name, type, latitude, longitude
+        case id, name, type, latitude, longitude, status, phone, address
         case ownerID = "owner_id"
         case nameAr = "name_ar"
         case descriptionEn = "description_en"
         case descriptionAr = "description_ar"
         case nextCategoryIndex = "next_category_index"
-        case isPublished = "is_published"
         case opensAt = "opens_at"
         case closesAt = "closes_at"
         case imageURL = "image_url"
@@ -46,12 +50,15 @@ struct RestaurantRow: Codable {
             type: RestaurantType(rawValue: type) ?? .restaurant,
             descriptionEn: descriptionEn,
             descriptionAr: descriptionAr,
-            isPublished: isPublished,
+            status: RestaurantStatus(rawValue: status) ?? .pending,
             opensAt: opensAt,
             closesAt: closesAt,
             latitude: latitude,
             longitude: longitude,
             imageURL: imageURL,
+            phone: phone,
+            address: address,
+            nextCategoryIndex: nextCategoryIndex,
             categories: cats
         )
     }
@@ -78,7 +85,7 @@ struct MenuCategoryRow: Codable {
         let items = (menuItems ?? [])
             .sorted { $0.displayOrder < $1.displayOrder }
             .map { $0.toMenuItem() }
-        return MenuCategory(id: id, letter: letter, name: name, nameAr: nameAr, items: items)
+        return MenuCategory(id: id, letter: letter, name: name, nameAr: nameAr, nextItemNumber: nextItemNumber, items: items)
     }
 }
 
@@ -108,16 +115,10 @@ struct MenuItemRecord: Codable {
 
 // MARK: - Small read helpers
 
-struct NextCategoryIndexRow: Codable {
-    let nextCategoryIndex: Int
-    enum CodingKeys: String, CodingKey { case nextCategoryIndex = "next_category_index" }
-}
-
-struct CategoryInfoRow: Codable {
-    let letter: String
-    let nextItemNumber: Int
-    enum CodingKeys: String, CodingKey {
-        case letter
-        case nextItemNumber = "next_item_number"
-    }
+/// Rows returned by the `add_category` / `add_item` database functions, which
+/// allocate the letter/number atomically server-side. The app only needs the
+/// new row's id — to attach a freshly picked photo to the item that was just
+/// created, instead of guessing at the end of a re-sorted list.
+struct InsertedRow: Decodable {
+    let id: UUID
 }

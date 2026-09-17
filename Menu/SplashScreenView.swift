@@ -11,11 +11,9 @@ struct SplashScreenView: View {
         ZStack {
             Color.mBackground.ignoresSafeArea()
 
-            MDecorCircle(diameter: 260, color: .mAccent100)
-                .position(x: UIScreen.main.bounds.width + 30, y: -30)
+            MDecorCircle(diameter: 260, color: .mAccent100, corner: .topTrailing, offset: CGSize(width: 160, height: -160))
 
-            MDecorCircle(diameter: 200, color: .mSage100)
-                .position(x: -60, y: UIScreen.main.bounds.height + 40)
+            MDecorCircle(diameter: 200, color: .mSage100, corner: .bottomLeading, offset: CGSize(width: -160, height: 140))
 
             VStack(spacing: 26) {
                 MenyuMascot(variant: .default, bobDuration: 3.0)

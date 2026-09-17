@@ -2,7 +2,7 @@ import XCTest
 @testable import Menu
 
 /// Exercises `AppStore.search`, which is pure once `restaurants` is populated —
-/// no network involved in the assertions themselves. Constructing `AppStore()`
+/// no network involved in the assertions themselves. Constructing `AppStore(loadOnStart: false)`
 /// does kick off its usual background session-check/load calls (same as at app
 /// launch); that's a real network side effect of this suite, not something
 /// these tests wait on or depend on.
@@ -10,21 +10,22 @@ import XCTest
 final class AppStoreSearchTests: XCTestCase {
 
     private func makeStore(with restaurants: [Restaurant]) -> AppStore {
-        let store = AppStore()
+        let store = AppStore(loadOnStart: false)
         store.restaurants = restaurants
         return store
     }
 
     private func sampleRestaurant() -> Restaurant {
-        let hot = MenuCategory(id: UUID(), letter: "A", name: "Hot Drinks", nameAr: "مشروبات ساخنة", items: [
+        let hot = MenuCategory(id: UUID(), letter: "A", name: "Hot Drinks", nameAr: "مشروبات ساخنة", nextItemNumber: 1, items: [
             MenuItem(id: UUID(), code: "A01", name: "Espresso", nameAr: "اسبريسو", price: 10, isAvailable: true),
             MenuItem(id: UUID(), code: "A02", name: "Latte", nameAr: "لاتيه", price: 14, isAvailable: true),
         ])
         return Restaurant(
             id: UUID(), ownerID: UUID(), name: "Brew Cafe", nameAr: "بريو كافيه",
             type: .cafe, descriptionEn: "", descriptionAr: "",
-            isPublished: true, opensAt: nil, closesAt: nil,
+            status: .approved, opensAt: nil, closesAt: nil,
             latitude: nil, longitude: nil, imageURL: nil,
+            phone: nil, address: nil, nextCategoryIndex: 1,
             categories: [hot]
         )
     }
@@ -65,10 +66,11 @@ final class AppStoreSearchTests: XCTestCase {
         let second = Restaurant(
             id: UUID(), ownerID: UUID(), name: "Burger House", nameAr: "برجر هاوس",
             type: .restaurant, descriptionEn: "", descriptionAr: "",
-            isPublished: true, opensAt: nil, closesAt: nil,
+            status: .approved, opensAt: nil, closesAt: nil,
             latitude: nil, longitude: nil, imageURL: nil,
+            phone: nil, address: nil, nextCategoryIndex: 1,
             categories: [
-                MenuCategory(id: UUID(), letter: "A", name: "Burgers", nameAr: "برجر", items: [
+                MenuCategory(id: UUID(), letter: "A", name: "Burgers", nameAr: "برجر", nextItemNumber: 1, items: [
                     MenuItem(id: UUID(), code: "A01", name: "Classic Burger", nameAr: "برجر كلاسيك", price: 22, isAvailable: true),
                 ]),
             ]

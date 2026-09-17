@@ -399,19 +399,33 @@ struct MPriceInputField: View {
     @State private var text: String = ""
     @FocusState private var focused: Bool
 
+    /// A cafe's prices are not whole riyals. The field used to be `numberPad`
+    /// with every non-digit stripped and the result clamped to 999, so 14.50
+    /// could not be typed at all and anything over 999 was silently rewritten —
+    /// which is also why the customer-side display could get away with
+    /// truncating to an Int for so long.
+    private static let maxPrice: Double = 99_999
+
     var body: some View {
         HStack(spacing: 6) {
             TextField("0", text: $text)
-                .keyboardType(.numberPad)
+                .keyboardType(.decimalPad)
                 .multilineTextAlignment(.center)
                 .font(.plexMono(15, weight: .bold))
-                .frame(width: 46)
+                .frame(width: 72)
                 .focused($focused)
                 .onChange(of: text) { _, newValue in
-                    let digits = newValue.filter(\.isNumber)
-                    let clamped = min(Int(digits) ?? 0, 999)
-                    text = clamped == 0 && digits.isEmpty ? "" : String(clamped)
-                    value = Double(clamped)
+                    guard !newValue.isEmpty else { value = 0; return }
+                    guard let parsed = Money.parse(newValue), parsed >= 0 else {
+                        text = String(newValue.dropLast())
+                        return
+                    }
+                    if parsed > Self.maxPrice {
+                        text = Self.display(Self.maxPrice)
+                        value = Self.maxPrice
+                    } else {
+                        value = parsed
+                    }
                 }
             Text(currencyLabel)
                 .font(.plexArabic(11.5))
@@ -421,7 +435,18 @@ struct MPriceInputField: View {
         .padding(.vertical, 5)
         .overlay(Capsule().strokeBorder(Color.mLine, lineWidth: 1))
         .environment(\.layoutDirection, .leftToRight)
-        .onAppear { text = value == 0 ? "" : "\(Int(value))" }
+        .onAppear { text = value == 0 ? "" : Self.display(value) }
+        // Re-syncs when the row is rebound to a different item, or when a
+        // reload brings a price edited elsewhere; `onAppear` alone does not
+        // fire again for a reused row.
+        .onChange(of: value) { _, newValue in
+            guard !focused else { return }
+            text = newValue == 0 ? "" : Self.display(newValue)
+        }
+    }
+
+    private static func display(_ value: Double) -> String {
+        value == value.rounded() ? String(Int(value)) : String(format: "%.2f", value)
     }
 }
 
@@ -456,11 +481,23 @@ struct MStatTile: View {
 struct MDecorCircle: View {
     let diameter: CGFloat
     let color: Color
+    /// Which corner of the containing ZStack the circle hangs off, plus how far
+    /// past it. Callers used to place these with
+    /// `.position(x: UIScreen.main.bounds.width + 30, y: -30)`, which reads the
+    /// whole device screen: wrong in a sheet, in split view, on rotation, and
+    /// deprecated besides. Anchoring to the parent keeps the same look without
+    /// asking the screen for its size.
+    var corner: Alignment = .center
+    var offset: CGSize = .zero
 
     var body: some View {
         Circle()
             .fill(color)
             .frame(width: diameter, height: diameter)
+            .offset(x: offset.width, y: offset.height)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: corner)
+            .ignoresSafeArea()
+            .allowsHitTesting(false)
     }
 }
 

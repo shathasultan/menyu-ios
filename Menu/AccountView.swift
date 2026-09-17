@@ -1,4 +1,5 @@
 import SwiftUI
+import AuthenticationServices
 
 /// The tab customers see. Shown for anyone who isn't signed in, or who is
 /// signed in but doesn't own a restaurant yet — the moment `myRestaurants`
@@ -91,6 +92,10 @@ struct AccountView: View {
 /// invites anyone to sign in without a reason to.
 struct VendorIntentGateView: View {
     @Environment(AppStore.self) private var store
+    /// Same key ContentView routes on. The role screen promises "you can change
+    /// it anytime", and this is what makes that true — before, the flag was set
+    /// once on first launch and nothing could ever unset it.
+    @AppStorage("menu.hasCompletedRoleGate.v1") private var hasCompletedRoleGate = false
     var onConfirm: () -> Void
     var onAdminLogin: (() -> Void)? = nil
 
@@ -130,6 +135,14 @@ struct VendorIntentGateView: View {
                 .padding(.horizontal, 28)
                 .padding(.top, 8)
 
+                Button {
+                    hasCompletedRoleGate = false
+                } label: {
+                    Text(isArabic ? "تغيير طريقة الاستخدام" : "Change how you use menu")
+                        .font(.plexArabic(12, weight: .bold))
+                        .foregroundStyle(Color.mInkMuted)
+                }
+
                 if let onAdminLogin {
                     Button(action: onAdminLogin) {
                         Text(isArabic ? "دخول الإدارة" : "Admin Login")
@@ -147,9 +160,15 @@ struct VendorIntentGateView: View {
 
 // MARK: - Sign In
 
-/// Google is the only sign-in method — no email/password, no phone number
-/// anywhere in the merchant profile. A merchant's identity is just whatever
-/// Google hands back (email); nothing else is collected at sign-in time.
+/// Google and Apple. No email/password, no phone number anywhere in the
+/// merchant profile — a merchant's identity is just the email the provider
+/// hands back, and nothing else is collected at sign-in time.
+///
+/// Apple is not optional here: `AppStore.signInWithApple` and the
+/// `com.apple.developer.applesignin` entitlement were both already in place,
+/// but no screen ever presented the button. App Store Review Guideline 4.8
+/// requires an equivalent login option wherever a third-party sign-in like
+/// Google is offered, so shipping without this button is a rejection.
 struct AccountSignInView: View {
     @Environment(AppStore.self) private var store
     @State private var isLoading = false
@@ -210,6 +229,30 @@ struct AccountSignInView: View {
                     .padding(.vertical, 14)
                 }
                 .buttonStyle(.mSecondary())
+                .disabled(isLoading)
+
+                SignInWithAppleButton(.continue) { request in
+                    request.requestedScopes = [.email]
+                    request.nonce = store.makeAppleNonce()
+                } onCompletion: { result in
+                    switch result {
+                    case .success(let authorization):
+                        Task {
+                            isLoading = true
+                            errorText = nil
+                            do { try await store.signInWithApple(authorization: authorization) }
+                            catch { errorText = isArabic ? "تعذّر الدخول بحساب أبل." : "Couldn't sign in with Apple." }
+                            isLoading = false
+                        }
+                    case .failure(let error):
+                        // Backing out of the sheet is not a failure to report.
+                        guard (error as? ASAuthorizationError)?.code != .canceled else { return }
+                        errorText = isArabic ? "تعذّر الدخول بحساب أبل." : "Couldn't sign in with Apple."
+                    }
+                }
+                .signInWithAppleButtonStyle(.black)
+                .frame(height: 52)
+                .clipShape(Capsule())
                 .disabled(isLoading)
 
                 Text(isArabic ? "تراجع إدارة menu حسابك قبل ظهور متجرك للعملاء." : "menu's admin reviews your account before your store appears to customers.")

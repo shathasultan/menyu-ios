@@ -22,8 +22,7 @@ struct AdminLoginView: View {
         ZStack {
             Color.mAdminBg.ignoresSafeArea()
 
-            MDecorCircle(diameter: 240, color: .white.opacity(0.05))
-                .position(x: -50, y: UIScreen.main.bounds.height + 50)
+            MDecorCircle(diameter: 240, color: .white.opacity(0.05), corner: .bottomLeading, offset: CGSize(width: -170, height: 170))
 
             VStack(alignment: .trailing, spacing: 0) {
                 Button(action: onBack) {
