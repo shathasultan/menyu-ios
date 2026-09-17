@@ -127,6 +127,33 @@ final class SignInConfigurationTests: XCTestCase {
         XCTAssertEqual(store.signInFailureText(error, arabic: true), "لا يوجد اتصال بالإنترنت.")
     }
 
+    // MARK: - Connection secrets
+
+    func testSupabaseSecretsAreFilledIn() {
+        // The failure this catches looked like a Google problem and a wrong
+        // password: with an empty key every request comes back
+        // "No API key found in request", including the ones behind sign-in.
+        // Values are never printed — only measured.
+        XCTAssertFalse(Secrets.supabaseURL.trimmingCharacters(in: .whitespaces).isEmpty,
+                       "supabaseURL فارغ في Menu/Secrets.swift")
+        XCTAssertFalse(Secrets.supabaseKey.trimmingCharacters(in: .whitespaces).isEmpty,
+                       "supabaseKey فارغ في Menu/Secrets.swift")
+
+        let url = URL(string: Secrets.supabaseURL.trimmingCharacters(in: .whitespaces))
+        XCTAssertEqual(url?.scheme, "https", "supabaseURL لا يبدأ بـhttps")
+        XCTAssertGreaterThan(Secrets.supabaseKey.count, 40, "supabaseKey أقصر من أن يكون مفتاحًا حقيقيًّا")
+    }
+
+    @MainActor
+    func testMissingAPIKeyBlamesSecretsNotGoogle() {
+        let store = AppStore(loadOnStart: false)
+        let error = NSError(domain: "Auth.AuthError", code: 1, userInfo: [
+            NSLocalizedDescriptionKey: "No API key found in request"
+        ])
+        let text = store.signInFailureText(error, arabic: true) ?? ""
+        XCTAssertTrue(text.contains("Secrets.swift"), "الرسالة لا تشير إلى مصدر المشكلة: \(text)")
+    }
+
     // MARK: - Branding
 
     func testGoogleOfficialMarkIsBundled() {

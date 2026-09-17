@@ -14,14 +14,26 @@ git pull
 ls Menu/Secrets.swift
 ```
 
-آخر أمر لازم يطبع المسار. إن قال «No such file»، انسخي القالب وعبّيه:
+آخر أمر لازم يطبع المسار. إن قال «No such file»، انسخي القالب:
 
 ```bash
 cp Secrets.swift.example Menu/Secrets.swift
 ```
 
-ثم املئي `supabaseURL` و`supabaseKey` من Supabase ← Project Settings ← API
-(`Project URL` و`anon public`). الملف مستثنى من Git عمدًا فلا يُرفع.
+**ووجوده وحده لا يكفي — لازم يكون معبّأً.** تأكدي بهذا (يطبع الطول لا القيمة):
+
+```bash
+awk -F'"' '/supabaseURL|supabaseKey/ {gsub(/^[ \t]+/,"",$1); print $1 "→ طول القيمة: " length($2)}' Menu/Secrets.swift
+```
+
+طول صفر يعني فارغًا. املئي `supabaseURL` و`supabaseKey` من
+Supabase ← Project Settings ← API (`Project URL` و`anon public`).
+الملف مستثنى من Git عمدًا فلا يُرفع.
+
+> ملفٌّ فارغ لا يمنع البناء: التطبيق يشتغل، ثم يُرفض **كل** طلب فيه بـ
+> `No API key found in request` — فيظهر بصورة «تعذّر الدخول بحساب قوقل»
+> و«كلمة المرور خطأ» ولا يظهر قريبًا من سببه. لهذا صار التطبيق يتوقّف عند
+> الإقلاع برسالة صريحة، واختبار `testSupabaseSecretsAreFilledIn` يمسكها في `⌘U`.
 
 ---
 

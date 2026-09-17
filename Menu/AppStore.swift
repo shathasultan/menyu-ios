@@ -92,6 +92,11 @@ final class AppStore {
                 ? "لا يوجد حساب بهذا البريد، أو كلمة المرور غير صحيحة. الحسابات المُنشأة بقوقل ليس لها كلمة مرور — ادخلي بزر قوقل."
                 : "No account with this email, or the password is wrong. Accounts created through Google have no password — use the Google button."
 
+        case text.contains("no api key"), text.contains("invalid api key"), text.contains("apikey"):
+            return arabic
+                ? "التطبيق يتصل بـSupabase بلا مفتاح. عبّي supabaseKey في Menu/Secrets.swift من Project Settings ← API."
+                : "The app is calling Supabase with no API key — fill in Menu/Secrets.swift."
+
         case text.contains("provider is not enabled"), text.contains("unsupported provider"),
              text.contains("validation_failed"):
             return arabic
@@ -123,6 +128,13 @@ final class AppStore {
             errorMessage = language == .arabic ? "لا يوجد اتصال بالإنترنت." : "No internet connection."
         } else if text.contains("row-level security") || text.contains("permission denied") || text.contains("42501") {
             errorMessage = language == .arabic ? "ليست لديك صلاحية لهذه العملية." : "You don't have permission for this."
+        } else if text.contains("no api key") || text.contains("invalid api key") {
+            // Not a permission problem and not the user's doing: the client was
+            // built without `Secrets.swift` filled in, so every request is
+            // rejected before it reaches any policy.
+            errorMessage = language == .arabic
+                ? "إعداد الاتصال ناقص: عبّي Menu/Secrets.swift."
+                : "Connection isn't configured: fill in Menu/Secrets.swift."
         } else if text.contains("duplicate key") || text.contains("23505") {
             errorMessage = language == .arabic ? "هذا العنصر موجود مسبقًا." : "This item already exists."
         } else {
