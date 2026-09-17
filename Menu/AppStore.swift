@@ -344,7 +344,10 @@ final class AppStore {
     /// stored public URL. Deletes have to target the object that actually
     /// exists rather than re-deriving a naming convention, because the
     /// convention changed in 0008 and old rows still point at the old one.
-    static func storagePath(from urlString: String?) -> String? {
+    /// `nonisolated`: pure string work that touches no state on the class, so
+    /// it does not need the main actor — and without this it can't be called
+    /// from a synchronous, non-isolated context such as a plain test method.
+    nonisolated static func storagePath(from urlString: String?) -> String? {
         guard let urlString, let range = urlString.range(of: "/menu-images/") else { return nil }
         var path = String(urlString[range.upperBound...])
         if let q = path.firstIndex(of: "?") { path = String(path[..<q]) }
