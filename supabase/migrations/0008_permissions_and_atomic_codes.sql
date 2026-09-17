@@ -237,12 +237,17 @@ drop policy if exists "authenticated upload menu images" on storage.objects;
 drop policy if exists "owners manage their menu images" on storage.objects;
 drop policy if exists "owners delete their menu images" on storage.objects;
 
+-- `storage.objects.name` مؤهَّل عمدًا: بدون التأهيل يحلّ Postgres اسم العمود
+-- داخل الاستعلام الفرعي على أقرب نطاق، وهو public.restaurants.name — أي اسم
+-- المطعم بدل اسم الملف. الشرط حينها لا يتحقق أبدًا فيُرفض كل رفع صورة.
+
 create policy "owners upload their menu images" on storage.objects
   for insert with check (
     bucket_id = 'menu-images'
     and exists (
       select 1 from public.restaurants r
-      where r.owner_id = auth.uid() and r.id::text = (storage.foldername(name))[1]
+      where r.owner_id = auth.uid()
+        and r.id::text = (storage.foldername(storage.objects.name))[1]
     )
   );
 
@@ -251,7 +256,8 @@ create policy "owners update their menu images" on storage.objects
     bucket_id = 'menu-images'
     and exists (
       select 1 from public.restaurants r
-      where r.owner_id = auth.uid() and r.id::text = (storage.foldername(name))[1]
+      where r.owner_id = auth.uid()
+        and r.id::text = (storage.foldername(storage.objects.name))[1]
     )
   );
 
@@ -260,7 +266,8 @@ create policy "owners delete their menu images" on storage.objects
     bucket_id = 'menu-images'
     and exists (
       select 1 from public.restaurants r
-      where r.owner_id = auth.uid() and r.id::text = (storage.foldername(name))[1]
+      where r.owner_id = auth.uid()
+        and r.id::text = (storage.foldername(storage.objects.name))[1]
     )
   );
 
