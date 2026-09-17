@@ -21,7 +21,7 @@ struct AccountView: View {
             Group {
                 if !store.isAuthenticated {
                     if confirmedVendorIntent {
-                        AccountSignInView()
+                        AccountSignInView(onAdminLogin: { showAdminLogin = true })
                     } else {
                         VendorIntentGateView(onConfirm: { confirmedVendorIntent = true }, onAdminLogin: { showAdminLogin = true })
                     }
@@ -173,6 +173,10 @@ struct AccountSignInView: View {
     @Environment(AppStore.self) private var store
     @State private var isLoading = false
     @State private var errorText: String? = nil
+    /// The admin entrance used to live only on the intent gate before it, so
+    /// confirming "yes, I have a restaurant" hid it for the rest of the
+    /// session, and Welcome — the only other way in — shows once per device.
+    var onAdminLogin: (() -> Void)? = nil
 
     private var isArabic: Bool { store.language == .arabic }
 
@@ -260,6 +264,14 @@ struct AccountSignInView: View {
                     .foregroundStyle(Color.mInkMuted)
                     .multilineTextAlignment(.center)
                     .padding(.top, 4)
+
+                if let onAdminLogin {
+                    Button(action: onAdminLogin) {
+                        Text(isArabic ? "دخول الإدارة" : "Admin Login")
+                            .font(.plexArabic(12, weight: .bold))
+                            .foregroundStyle(Color.mInkMuted)
+                    }
+                }
 
                 Spacer().frame(height: 20)
             }
