@@ -211,7 +211,7 @@ struct AccountSignInView: View {
                         isLoading = true
                         errorText = nil
                         do { try await store.signInWithGoogle(presenting: presenter) }
-                        catch { errorText = isArabic ? "تعذّر الدخول بحساب قوقل." : "Couldn't sign in with Google." }
+                        catch { errorText = store.signInFailureText(error, arabic: isArabic) }
                         isLoading = false
                     }
                 } label: {
@@ -241,13 +241,13 @@ struct AccountSignInView: View {
                             isLoading = true
                             errorText = nil
                             do { try await store.signInWithApple(authorization: authorization) }
-                            catch { errorText = isArabic ? "تعذّر الدخول بحساب أبل." : "Couldn't sign in with Apple." }
+                            catch { errorText = store.signInFailureText(error, arabic: isArabic) }
                             isLoading = false
                         }
                     case .failure(let error):
-                        // Backing out of the sheet is not a failure to report.
-                        guard (error as? ASAuthorizationError)?.code != .canceled else { return }
-                        errorText = isArabic ? "تعذّر الدخول بحساب أبل." : "Couldn't sign in with Apple."
+                        // Backing out of the sheet is not a failure to report;
+                        // signInFailureText returns nil for that.
+                        errorText = store.signInFailureText(error, arabic: isArabic)
                     }
                 }
                 .signInWithAppleButtonStyle(.black)

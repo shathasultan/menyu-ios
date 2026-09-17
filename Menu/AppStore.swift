@@ -55,6 +55,63 @@ final class AppStore {
         }
     }
 
+    /// Turns a sign-in failure into something that names the real cause.
+    ///
+    /// Every sign-in path used to end in one fixed sentence — "البريد أو كلمة
+    /// المرور غير صحيحة" or "تعذّر الدخول بحساب قوقل" — no matter what actually
+    /// happened. A missing account, an unconfirmed email, a provider that isn't
+    /// enabled in Supabase, and a dropped connection all read identically, so
+    /// the message actively pointed the wrong way.
+    ///
+    /// Returns nil when the person simply backed out of the sheet, which is not
+    /// a failure and should show nothing. The underlying error always reaches
+    /// the console.
+    func signInFailureText(_ error: Error, arabic: Bool) -> String? {
+        let ns = error as NSError
+        let raw = error.localizedDescription
+        print("[menyu] sign-in failed — domain=\(ns.domain) code=\(ns.code) — \(raw)")
+
+        // The user dismissed Google's or Apple's sheet.
+        if ns.domain == "com.google.GIDSignIn" && ns.code == -5 { return nil }
+        if ns.domain == ASAuthorizationError.errorDomain && ns.code == ASAuthorizationError.canceled.rawValue { return nil }
+        if ns.domain == NSURLErrorDomain && ns.code == NSURLErrorCancelled { return nil }
+
+        let text = raw.lowercased()
+        switch true {
+        case ns.domain == NSURLErrorDomain,
+             text.contains("offline"), text.contains("network"), text.contains("timed out"):
+            return arabic ? "لا يوجد اتصال بالإنترنت." : "No internet connection."
+
+        case text.contains("email not confirmed"), text.contains("not confirmed"):
+            return arabic
+                ? "الحساب موجود لكن البريد غير مؤكَّد. أكّديه من لوحة Supabase أو من رسالة التأكيد."
+                : "The account exists but its email isn't confirmed."
+
+        case text.contains("invalid login credentials"), text.contains("invalid_grant"):
+            return arabic
+                ? "لا يوجد حساب بهذا البريد، أو كلمة المرور غير صحيحة. الحسابات المُنشأة بقوقل ليس لها كلمة مرور — ادخلي بزر قوقل."
+                : "No account with this email, or the password is wrong. Accounts created through Google have no password — use the Google button."
+
+        case text.contains("provider is not enabled"), text.contains("unsupported provider"),
+             text.contains("validation_failed"):
+            return arabic
+                ? "مزوّد الدخول غير مفعَّل في Supabase. فعّليه من Authentication ← Providers."
+                : "This sign-in provider isn't enabled in Supabase."
+
+        case text.contains("audience"), text.contains("invalid claim"), text.contains("bad_jwt"),
+             text.contains("client id"), text.contains("client_id"):
+            return arabic
+                ? "Supabase رفض رمز قوقل: معرّف العميل غير مسجَّل عنده. أضيفيه في Authentication ← Providers ← Google ← Authorized Client IDs."
+                : "Supabase rejected the Google token: this client id isn't registered under the Google provider."
+
+        case text.contains("over_email_send_rate"), text.contains("rate limit"), ns.code == 429:
+            return arabic ? "محاولات كثيرة متتالية. انتظري دقيقة ثم أعيدي المحاولة." : "Too many attempts — wait a minute."
+
+        default:
+            return arabic ? "تعذّر الدخول. التفاصيل في سجل Xcode." : "Sign-in failed. Details are in the Xcode console."
+        }
+    }
+
     /// Raw PostgREST/network errors read like stack traces and leak backend
     /// shape to whoever is holding the phone. Everything the user sees goes
     /// through here; the underlying error still reaches the console.

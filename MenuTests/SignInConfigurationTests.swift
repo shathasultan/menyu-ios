@@ -75,6 +75,53 @@ final class SignInConfigurationTests: XCTestCase {
         XCTAssertFalse((key ?? "").isEmpty, "NSLocationWhenInUseUsageDescription missing from Info.plist")
     }
 
+    // MARK: - Failure messages
+
+    @MainActor
+    func testCancellationIsNotReportedAsAFailure() {
+        let store = AppStore(loadOnStart: false)
+        let googleCancel = NSError(domain: "com.google.GIDSignIn", code: -5)
+        XCTAssertNil(store.signInFailureText(googleCancel, arabic: true))
+    }
+
+    @MainActor
+    func testMissingAccountPointsAtGoogleRatherThanThePassword() {
+        let store = AppStore(loadOnStart: false)
+        let error = NSError(domain: "Auth", code: 400, userInfo: [
+            NSLocalizedDescriptionKey: "Invalid login credentials"
+        ])
+        let text = try? XCTUnwrap(store.signInFailureText(error, arabic: true))
+        // The old wording blamed the password even when no such account existed,
+        // or when the account was a Google one with no password at all.
+        XCTAssertTrue((text ?? "").contains("قوقل"))
+    }
+
+    @MainActor
+    func testUnconfirmedEmailSaysSo() {
+        let store = AppStore(loadOnStart: false)
+        let error = NSError(domain: "Auth", code: 400, userInfo: [
+            NSLocalizedDescriptionKey: "Email not confirmed"
+        ])
+        XCTAssertEqual(store.signInFailureText(error, arabic: true),
+                       "الحساب موجود لكن البريد غير مؤكَّد. أكّديه من لوحة Supabase أو من رسالة التأكيد.")
+    }
+
+    @MainActor
+    func testUnregisteredClientIDIsNamed() {
+        let store = AppStore(loadOnStart: false)
+        let error = NSError(domain: "Auth", code: 400, userInfo: [
+            NSLocalizedDescriptionKey: "Invalid claim: missing sub claim, bad audience in client_id"
+        ])
+        XCTAssertTrue((store.signInFailureText(error, arabic: true) ?? "").contains("Authorized Client IDs"))
+    }
+
+    @MainActor
+    func testOfflineIsNotBlamedOnCredentials() {
+        let store = AppStore(loadOnStart: false)
+        let error = NSError(domain: NSURLErrorDomain, code: -1009)
+        XCTAssertEqual(store.signInFailureText(error, arabic: true), "لا يوجد اتصال بالإنترنت.")
+    }
+
     // MARK: - Branding
 
     func testGoogleOfficialMarkIsBundled() {

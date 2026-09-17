@@ -135,7 +135,7 @@ struct AdminLoginView: View {
             try await store.signIn(email: email.trimmingCharacters(in: .whitespaces), password: password)
             await finishIfAdmin()
         } catch {
-            self.error = isArabic ? "البريد أو كلمة المرور غير صحيحة." : "Incorrect email or password."
+            self.error = store.signInFailureText(error, arabic: isArabic)
         }
     }
 
@@ -148,7 +148,7 @@ struct AdminLoginView: View {
             try await store.signInWithGoogle(presenting: presenter)
             await finishIfAdmin()
         } catch {
-            self.error = isArabic ? "تعذّر الدخول بحساب قوقل." : "Couldn't sign in with Google."
+            self.error = store.signInFailureText(error, arabic: isArabic)
         }
     }
 
