@@ -154,13 +154,42 @@ final class SignInConfigurationTests: XCTestCase {
         XCTAssertTrue(text.contains("Secrets.swift"), "الرسالة لا تشير إلى مصدر المشكلة: \(text)")
     }
 
+    // MARK: - Reachability
+
+    func testAdminEntranceIsNotOnlyOnTheOnboardingScreen() throws {
+        // Welcome shows once per device and the intent gate disappears the
+        // moment a vendor confirms intent, so the admin screen had a window
+        // that closed and never reopened. Every pre-auth screen that can be the
+        // last one standing must carry the link.
+        let account = try String(contentsOfFile: Self.sourcePath("Menu/AccountView.swift"), encoding: .utf8)
+        let signInSection = try XCTUnwrap(account.range(of: "struct AccountSignInView"))
+            .upperBound
+        let signInBody = String(account[signInSection...])
+        XCTAssertTrue(signInBody.contains("دخول الإدارة"),
+                      "شاشة الدخول لا تحمل مدخلًا للإدارة")
+    }
+
+    /// Resolves a repo-relative path from this test file's own location, so the
+    /// check reads the real source rather than a copy in the bundle.
+    private static func sourcePath(_ relative: String) -> String {
+        let thisFile = URL(fileURLWithPath: #filePath)
+        let repoRoot = thisFile.deletingLastPathComponent().deletingLastPathComponent()
+        return repoRoot.appendingPathComponent(relative).path
+    }
+
     // MARK: - Branding
 
-    func testGoogleOfficialMarkIsBundled() {
-        // Not a crash, a rejection: Google's branding guidelines require their
-        // own mark on the button. Add the "G" from Google's branding kit to
-        // Assets.xcassets as an image set named "GoogleG".
-        XCTAssertTrue(GoogleGlyph.hasOfficialMark,
-                      "Add Google's official 'G' to Assets.xcassets as \"GoogleG\" before submitting.")
+    func testSignInUsesGooglesOwnButton() throws {
+        // Google's branding guidelines require their supplied mark and button.
+        // The app used to draw a four-colour ring that merely resembled it,
+        // which is grounds for rejection — this asserts the real control from
+        // `GoogleSignInSwift` is what ships, and that the lookalike is gone.
+        let account = try String(contentsOfFile: Self.sourcePath("Menu/AccountView.swift"), encoding: .utf8)
+        XCTAssertTrue(account.contains("import GoogleSignInSwift"),
+                      "GoogleSignInSwift غير مستورد — الزر الرسمي غير مستخدم")
+        XCTAssertTrue(account.contains("GoogleSignInButton"),
+                      "زر قوقل الرسمي غير مستخدم في شاشة الدخول")
+        XCTAssertFalse(account.contains("GoogleGlyph"),
+                       "الشعار المقارب ما زال في الكود؛ الزر الرسمي يغني عنه")
     }
 }
