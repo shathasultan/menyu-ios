@@ -1,5 +1,6 @@
 import SwiftUI
 import AuthenticationServices
+import GoogleSignInSwift
 
 /// The tab customers see. Shown for anyone who isn't signed in, or who is
 /// signed in but doesn't own a restaurant yet — the moment `myRestaurants`
@@ -209,31 +210,29 @@ struct AccountSignInView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                 }
 
-                Button {
-                    Task {
-                        guard let presenter = AppStore.topViewController() else { return }
-                        isLoading = true
-                        errorText = nil
-                        do { try await store.signInWithGoogle(presenting: presenter) }
-                        catch { errorText = store.signInFailureText(error, arabic: isArabic) }
-                        isLoading = false
-                    }
-                } label: {
-                    HStack(spacing: 10) {
-                        if isLoading {
-                            ProgressView().scaleEffect(0.85)
-                        } else {
-                            GoogleGlyph(size: 18)
+                // Google's own button from `GoogleSignInSwift`, which ships
+                // with the package already linked to this target. Their
+                // sign-in branding guidelines require their supplied mark and
+                // button, so this is the one control in the app that is
+                // deliberately not in our design language — a close-enough
+                // lookalike is grounds for rejection.
+                if isLoading {
+                    ProgressView()
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 18)
+                } else {
+                    GoogleSignInButton {
+                        Task {
+                            guard let presenter = AppStore.topViewController() else { return }
+                            isLoading = true
+                            errorText = nil
+                            do { try await store.signInWithGoogle(presenting: presenter) }
+                            catch { errorText = store.signInFailureText(error, arabic: isArabic) }
+                            isLoading = false
                         }
-                        Text(isArabic ? "المتابعة باستخدام Google" : "Continue with Google")
-                            .font(.plexArabic(14, weight: .bold))
-                            .foregroundStyle(Color.mInk)
                     }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
+                    .frame(height: 52)
                 }
-                .buttonStyle(.mSecondary())
-                .disabled(isLoading)
 
                 SignInWithAppleButton(.continue) { request in
                     request.requestedScopes = [.email]
@@ -277,48 +276,5 @@ struct AccountSignInView: View {
             }
             .padding(.horizontal, 28)
         }
-    }
-}
-
-// MARK: - Google glyph
-
-/// Google's sign-in branding guidelines require their own supplied mark on the
-/// button — a lookalike is grounds for rejection, so this prefers the real
-/// asset and only falls back to the four-color ring when it is missing.
-///
-/// To ship: download the "G" mark from Google's branding kit and add it to
-/// `Assets.xcassets` as an image set named `GoogleG`. Nothing else changes.
-struct GoogleGlyph: View {
-    var size: CGFloat = 18
-
-    static var hasOfficialMark: Bool { UIImage(named: "GoogleG") != nil }
-
-    var body: some View {
-        Group {
-            if Self.hasOfficialMark {
-                Image("GoogleG")
-                    .resizable()
-                    .scaledToFit()
-            } else {
-                approximateRing
-            }
-        }
-        .frame(width: size, height: size)
-    }
-
-    private var approximateRing: some View {
-        ZStack {
-            arc(0.0, 0.25, Color(hex: 0x4285F4))
-            arc(0.25, 0.5, Color(hex: 0x34A853))
-            arc(0.5, 0.75, Color(hex: 0xFBBC05))
-            arc(0.75, 1.0, Color(hex: 0xEA4335))
-        }
-        .rotationEffect(.degrees(-90))
-    }
-
-    private func arc(_ from: CGFloat, _ to: CGFloat, _ color: Color) -> some View {
-        Circle()
-            .trim(from: from, to: to)
-            .stroke(color, style: StrokeStyle(lineWidth: size * 0.24, lineCap: .butt))
     }
 }

@@ -179,11 +179,17 @@ final class SignInConfigurationTests: XCTestCase {
 
     // MARK: - Branding
 
-    func testGoogleOfficialMarkIsBundled() {
-        // Not a crash, a rejection: Google's branding guidelines require their
-        // own mark on the button. Add the "G" from Google's branding kit to
-        // Assets.xcassets as an image set named "GoogleG".
-        XCTAssertTrue(GoogleGlyph.hasOfficialMark,
-                      "Add Google's official 'G' to Assets.xcassets as \"GoogleG\" before submitting.")
+    func testSignInUsesGooglesOwnButton() throws {
+        // Google's branding guidelines require their supplied mark and button.
+        // The app used to draw a four-colour ring that merely resembled it,
+        // which is grounds for rejection — this asserts the real control from
+        // `GoogleSignInSwift` is what ships, and that the lookalike is gone.
+        let account = try String(contentsOfFile: Self.sourcePath("Menu/AccountView.swift"), encoding: .utf8)
+        XCTAssertTrue(account.contains("import GoogleSignInSwift"),
+                      "GoogleSignInSwift غير مستورد — الزر الرسمي غير مستخدم")
+        XCTAssertTrue(account.contains("GoogleSignInButton"),
+                      "زر قوقل الرسمي غير مستخدم في شاشة الدخول")
+        XCTAssertFalse(account.contains("GoogleGlyph"),
+                       "الشعار المقارب ما زال في الكود؛ الزر الرسمي يغني عنه")
     }
 }
